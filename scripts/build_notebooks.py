@@ -286,10 +286,14 @@ for name, c in [("|00>", [1, 0, 0, 0]), ("|+0>", [1, 0, 1, 0] / np.sqrt(2)), ("B
     for a, b, u, w in paulis:
         s = toric.new_state(4)
         T = s.torus
-        if a: s.apply_string("X", T.x_col(1))
-        if b: s.apply_string("X", T.x_row(1))
-        if u: s.apply_string("Z", T.z_row(1))
-        if w: s.apply_string("Z", T.z_col(1))
+        if a:
+            s.apply_string("X", T.x_col(1))
+        if b:
+            s.apply_string("X", T.x_row(1))
+        if u:
+            s.apply_string("Z", T.z_row(1))
+        if w:
+            s.apply_string("Z", T.z_col(1))
         C.append(concurrence(s.logical(c)))
     print(f"start {name}: concurrence after each of the 16 gates = {sorted({float(round(x, 6)) for x in C})}")
 """),
@@ -321,7 +325,8 @@ stays a Pauli string times the start state, so this simulation of Pauli noise is
 ## Equilibrium: heat keeps some anyons around
 
 The second law does not drive the system to zero energy; it minimizes the free energy $F = E - TS$. In the Gibbs
-state every stabilizer is independently $-1$ with probability $1/(1 + e^{2/T})$. Live run on a $6 \times 6$ torus:
+state every stabilizer is independently $-1$ with probability $1/(1 + e^{2/T})$ (up to the rule that anyons come
+in pairs, which hardly matters on a large torus). Live run on a $6 \times 6$ torus:
 """),
     ("code", r"""
 s = toric.new_state(6)
@@ -403,8 +408,8 @@ axes[0].set_ylabel(f"mean sweeps to first logical error\n(runs capped at {ml['ma
 axes[0].legend(frameon=False);
 """),
     ("md", r"""
-Without correction a bigger torus does **not** help: the memory time is set by $T$, and it even shrinks a little with
-$L$ because there are more places for pairs to appear. With correction it grows rapidly with $L$.
+Without correction a bigger torus does **not** help: the memory time is set by $T$, and it even shrinks with $L$ (from
+about 35 sweeps at $L = 4$ to 11 at $L = 14$) because there are more places for pairs to appear. With correction it grows rapidly with $L$.
 
 The reason is the **energy barrier**. A logical error only ever costs the $+4$ of one pair, whatever $L$ is, so the
 2D toric code is not a *self-correcting* memory. Its topology protects the qubits against small local
@@ -433,7 +438,7 @@ plt.legend(frameon=False);
 """),
     ("md", r"""
 Frequent correction is what makes the bigger torus better: at $N = 1$ the $L = 10$ memory lasts several times longer
-than $L = 6$. The advantage shrinks quickly with $N$, and between $N = 10$ and $20$ the curves cross: the bigger
+than $L = 6$. The advantage shrinks quickly with $N$, and between $N = 5$ and $10$ the curves cross: the bigger
 torus is no better, even slightly worse, and both approach no correction at all. Correcting rarely is like not
 correcting.
 

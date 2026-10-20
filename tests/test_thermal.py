@@ -41,7 +41,7 @@ def test_decoder_undoes_a_short_error():
 
 
 def test_equilibrium_density_matches_gibbs():
-    """In the Gibbs state every stabilizer is independently -1 with probability 1 / (1 + e^{2/T})."""
+    """In the Gibbs state every stabilizer is -1 with probability 1 / (1 + e^{2/T}) (nearly independently)."""
     L, T, rng = 8, 1.0, np.random.default_rng(1)
     s = toric.new_state(L)
     fractions = []
