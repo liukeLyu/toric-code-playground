@@ -1,0 +1,120 @@
+{
+ "made_by": "python scripts/make_results.py correction_interval",
+ "T": 0.6,
+ "runs": 200,
+ "max_sweeps": 10000,
+ "points": [
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": 1,
+   "mean": 256.73,
+   "median": 184.0,
+   "capped": 0
+  },
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": 2,
+   "mean": 75.52,
+   "median": 54.0,
+   "capped": 0
+  },
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": 3,
+   "mean": 51.62,
+   "median": 36.5,
+   "capped": 0
+  },
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": 5,
+   "mean": 34.045,
+   "median": 25.5,
+   "capped": 0
+  },
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": 10,
+   "mean": 20.805,
+   "median": 16.0,
+   "capped": 0
+  },
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": 20,
+   "mean": 20.335,
+   "median": 12.5,
+   "capped": 0
+  },
+  {
+   "L": 6,
+   "T": 0.6,
+   "correct_every": null,
+   "mean": 21.095,
+   "median": 16.5,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": 1,
+   "mean": 1667.085,
+   "median": 1181.5,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": 2,
+   "mean": 222.62,
+   "median": 140.0,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": 3,
+   "mean": 96.515,
+   "median": 70.5,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": 5,
+   "mean": 42.09,
+   "median": 30.0,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": 10,
+   "mean": 19.73,
+   "median": 15.5,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": 20,
+   "mean": 13.5,
+   "median": 11.0,
+   "capped": 0
+  },
+  {
+   "L": 10,
+   "T": 0.6,
+   "correct_every": null,
+   "mean": 12.985,
+   "median": 11.0,
+   "capped": 0
+  }
+ ]
+}
