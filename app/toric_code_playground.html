@@ -459,9 +459,15 @@ if (typeof document !== 'undefined') (function () {
       hint: 'Z and then X on one edge makes two ε’s. Move one in small steps: a Z moves its e part, an X its m part. When a step pulls the two parts apart, the next one joins them again.',
       lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts. With e × e = m × m = 1 this also fixes the rest: e × ε = m and m × ε = e.',
       test: (c) => progress.farEps && c.gs },
-    { id: 'spin', panel: 'wave', start: '00', text: 'Turn an ε once around: keep its e still, walk its m through the 4 squares around it, then close every string.',
-      hint: 'Make an e pair and an m pair apart from each other. Bring one m next to one e, step it once around that e with X on the edges at the e’s vertex, then annihilate everything.',
-      lesson: '|ψ⟩ = −|00⟩. A full turn of ε multiplied the state by −1: this is the e–m braiding phase again, now a property of a single particle. A boson turned by 360° gets no sign. For anyons the phase from swapping two identical particles equals the phase from one full turn, so two ε’s that swap places also pick up −1: e and m are bosons, but their bound state ε is a fermion.',
+    { id: 'spin', panel: 'wave', start: '00', text: 'Turn an ε once around: walk its m once around its e, then close every string.',
+      hint: 'Press the button below for a ready ε, then click the highlighted edges one by one.',
+      // a ready ε: e at vertex (2, 2), its m on the square to the upper left; then the m walks around the e, and the strings close
+      setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(1, 4)], ['X', M.h(1, 3)]],
+      guide: (M) => [['X', M.h(1, 2)], ['X', M.v(2, 1)], ['X', M.h(2, 2)], ['X', M.v(2, 2)], ['X', M.h(1, 3)], ['X', M.h(1, 4)], ['Z', M.h(2, 2)]],
+      guideText: (k) => k < 4 ? `<b>${['X', 'X', 'X', 'X'][k]}</b> on the highlighted edge: the m steps to the next square around the e, and the ε turns a quarter (${k} of 4 done).`
+        : k < 6 ? 'The ε has turned once around. Now close the strings: <b>X</b> on the highlighted edge moves the m back towards its partner.'
+        : 'Last step: <b>Z</b> on the highlighted edge brings the two e’s together.',
+      lesson: '|ψ⟩ = −|00⟩. The dashed square left behind is the path of the m: a closed X loop around the e. It crosses the e’s Z string once, and ZX = −XZ, so a full turn of ε multiplied the state by −1. This is the e–m braiding phase again, now a property of a single particle. A boson turned by 360° gets no sign. For anyons the phase from swapping two identical particles equals the phase from one full turn, so two ε’s that swap places also pick up −1: e and m are bosons, but their bound state ε is a fermion.',
       test: (c) => progress.hadEps && c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
     { part: 'Computing with anyons', id: 'xgate', panel: 'loops', start: '00', text: 'Flip qubit 1: drag an m around the torus along y.',
       hint: 'X on the horizontal edges of one column, bottom to top. Drag to do it in one stroke.',
@@ -513,10 +519,24 @@ if (typeof document !== 'undefined') (function () {
   function start(key, size = L) {
     startKey = key; L = size; M = makeModel(L);
     document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
-    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.farEps = false;
+    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.farEps = false; progress.guide = null;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
     geometry(); resample(); render();
     log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
+  }
+  // a guided mission: the states after each guided step; where the board is on the guide, or -1 if it has left it
+  function placeGuide(m) {
+    start(m.start); for (const [G, e] of m.setup(M)) M.apply(S, G, e);
+    const steps = m.guide(M), states = [M.copy(S)];
+    for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); M.apply(s2, G, e); states.push(s2); }
+    progress.guide = { id: m.id, steps, states }; setFusion(true); setTool(steps[0][0]);
+    log('An ε is ready: its e on the vertex, its m on the square to the upper left.');
+  }
+  function guideAt() {
+    const g = progress.guide, m = missions[cur];
+    if (!g || !m || g.id !== m.id) return null;
+    const same = (a, b) => a.k === b.k && a.a.every((x, n) => x === b.a[n]) && a.b.every((x, n) => x === b.b[n]);
+    return g.states.findIndex((s2) => same(s2, S));
   }
   function stateKey(c) {          // ground state up to a global phase
     const k = c.findIndex((z) => cx.abs2(z) > 1e-9); const ph = cx.scale(cx.conj(c[k]), 1 / Math.sqrt(cx.abs2(c[k])));
@@ -565,6 +585,11 @@ if (typeof document !== 'undefined') (function () {
           else line(dualSeg(cp), { stroke: col('--hover'), 'stroke-width': 9, opacity: 0.5 }, g);
         }
       }
+    }
+    const k = guideAt();
+    if (k !== null && k >= 0 && k < progress.guide.steps.length) {
+      const [G, e] = progress.guide.steps[k], gG = gClip();
+      for (const cp of edgeCopies(e)) line(G === 'Z' ? cp : dualSeg(cp), { stroke: col('--accent'), 'stroke-width': 13, 'stroke-linecap': 'round', opacity: 0.45 }, gG);
     }
     const g = gClip();
     for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
@@ -733,6 +758,8 @@ if (typeof document !== 'undefined') (function () {
       : `${cur + 1} of ${missions.length} · ${partOf(cur)}`;
     document.getElementById('mTask').innerHTML = free ? 'Free play' : m.text;
     document.getElementById('mHint').innerHTML = free ? 'Pick a start state, a size and a view. Every tool still works.'
+      : !progress[m.id] && m.guide && guideAt() !== null ? (guideAt() >= 0 ? m.guideText(guideAt())
+        : 'That was not the highlighted edge. Undo to go back to the guide, or carry on your own way.')
       : !progress[m.id] ? m.hint + (m.id === 'basis' ? ` (${progress.visited.size} of 4 so far)` : '')
       : done === missions.length ? 'All missions done. Free play keeps every tool, or <button class="over">Start over</button>'
       : 'Done. The open dots are the missions still to do.';
@@ -743,9 +770,11 @@ if (typeof document !== 'undefined') (function () {
     document.querySelectorAll('#mHint .over').forEach((b) => b.addEventListener('click', startOver));
     const setup = document.getElementById('mSetup');
     const fresh = heat.t === 0 && !S.a.some((x) => x) && !S.b.some((x) => x);
-    setup.innerHTML = free ? '' : m.start && m.start !== startKey ? `<button>Start from |${STARTS[m.start][0]}⟩</button>`
+    setup.innerHTML = free ? '' : m.guide && !progress[m.id] && guideAt() === null ? '<button class="place">Place an ε for me</button>'
+      : m.start && m.start !== startKey ? `<button>Start from |${STARTS[m.start][0]}⟩</button>`
       : m.fresh && !fresh ? '<button>Start with a fresh board</button>' : '';
-    if (setup.firstChild) setup.firstChild.addEventListener('click', () => { start(m.start || startKey); log('A fresh board: no anyons, no strings, time 0.'); });
+    if (setup.querySelector('.place')) setup.firstChild.addEventListener('click', () => placeGuide(m));
+    else if (setup.firstChild) setup.firstChild.addEventListener('click', () => { start(m.start || startKey); log('A fresh board: no anyons, no strings, time 0.'); });
     document.getElementById('free').hidden = !free;
     if (free) {
       segment('startSeg', Object.keys(STARTS).map((k) => [k, `|${STARTS[k][0]}⟩`]), startKey, (k) => start(k));
@@ -1026,7 +1055,8 @@ if (typeof document !== 'undefined') (function () {
     drag.done.add(e);
     const before = M.anyons(S); M.apply(S, tool, e);
     log(describe(before, M.anyons(S), tool, e));
-    resample(); render();
+    const k = guideAt(), next = k > 0 && k < progress.guide.steps.length && progress.guide.steps[k][0];
+    resample(); if (next && next !== tool) setTool(next); else render();
   }
   function boardPoint(evt) { const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
   function siteAt(evt) {
