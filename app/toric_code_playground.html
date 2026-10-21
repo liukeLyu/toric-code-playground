@@ -484,8 +484,12 @@ if (typeof document !== 'undefined') (function () {
       guideText: (k) => (k === 0 ? '<b>Z</b> on the highlighted edge moves e₂ one step down.' : '<b>Z</b> again: e₂ lands on e₃.'),
       lesson: 'Energy +8 → +4: e₂ and e₃ vanished although they came from different pairs, and the two strings joined into one, from e₁ to e₄. Two e’s fuse to nothing: e × e = 1. With X the same holds for m: m × m = 1.',
       test: (c) => progress.fourE && c.ne === 2 && c.nm === 0 },
-    { id: 'fuseEM', panel: 'wave', start: '00', text: 'Now put an e next to an m, and switch on Fusion view.',
-      hint: 'Z and then X on the same edge makes an e pair and an m pair around it. Fusion view is below the board (key 4).',
+    { id: 'fuseEM', panel: 'wave', start: '00', text: 'Put an e next to an m: bring e₂ to a corner of m₃’s square.',
+      hint: 'Press the button below for an e pair e₁ — e₂ and an m pair m₃ — m₄, then click the highlighted edge.',
+      setup: (M) => [...ePair(M, 1, 4), ...mPair(M, 3, 2)], labels: [['e', 1, 4, 'e₁'], ['e', 3, 4, 'e₂'], ['m', 3, 2, 'm₃'], ['m', 5, 2, 'm₄']],
+      guide: (M) => [['Z', M.v(3, 3)]],
+      placeLabel: 'Place the pairs for me', placed: 'An e pair e₁ — e₂ along the top, an m pair m₃ — m₄ below. Fusion view is on.',
+      guideText: () => '<b>Z</b> on the highlighted edge moves e₂ one step down, onto a corner of m₃’s square. Watch the energy.',
       lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z moves its e part, an X its m part, and <b>Move ε</b> slides both together. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
       test: (c) => fusion && c.fz.eps.length > 0 },
     { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse ε’s from two different pairs: bring ε₂ onto ε₃.',
@@ -678,7 +682,7 @@ if (typeof document !== 'undefined') (function () {
       el('rect', { x: X(i + 0.5) - q / 2, y: Y(j + 0.5) - q / 2, width: q, height: q, rx: 3, fill: col('--m-color'), stroke: ring, 'stroke-width': 2 });
     const guided = guideAt() !== null && missions[cur].labels;
     if (guided) for (const [kind, i, j, name] of missions[cur].labels) {
-      const here = kind === 'm' ? c.an.m : kind === 'e' ? c.an.e : c.fz.eps;
+      const here = kind === 'eps' ? c.fz.eps : (fusion ? c.fz : c.an)[kind];   // an e or m inside an ε loses its label
       if (!here.some((q) => q[0] === i && q[1] === j)) continue;
       const [x, y] = kind === 'm' ? [i + 0.5, j + 0.88] : [i - 0.3, j + 0.3];
       const label = el('text', { x: X(x), y: Y(y), 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'font-size': s * 0.27,
