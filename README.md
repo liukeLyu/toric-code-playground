@@ -6,7 +6,7 @@
 
 The toric code from scratch, on an $L \times L$ torus with one qubit per edge, $H = -\sum_v A_v - \sum_p B_p$ with $A_v = \prod_{e \ni v} X_e$ and $B_p = \prod_{e \in p} Z_e$. Every state is tracked exactly as a Pauli string acting on a ground state, and checked against brute-force 18-qubit state vectors and the exact Gibbs state.
 
-**[Play in your browser](https://liukelyu.github.io/toric-code-playground/)**: nothing to install. Click an edge to apply a gate and watch the anyons, the energy and the two stored qubits change. Guided missions walk through the physics: the ground state as a loop soup, e and m anyons, braiding, logical gates, and a heat bath with a decoder. The same page works offline: open [`app/toric_code_playground.html`](app/toric_code_playground.html).
+**[Play in your browser](https://liukelyu.github.io/toric-code-playground/)**: nothing to install. Click an edge to apply a gate and watch the anyons, the energy and the two stored qubits change. Guided missions walk through the physics: the ground state as a loop soup, e and m anyons, braiding, fusion into the fermion ε, logical gates, and a heat bath with a decoder. The same page works offline: open [`app/toric_code_playground.html`](app/toric_code_playground.html).
 
 **Quick start in Python.**
 
