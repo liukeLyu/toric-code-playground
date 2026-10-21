@@ -100,6 +100,10 @@ button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--acce
 .rules .eq { font: 19px "Times New Roman", Georgia, serif; white-space: nowrap; }
 .rules .ok { color: var(--accent); font-weight: 700; }
 .rules .why { color: var(--text-secondary); }
+.rules .head { grid-column: 1 / -1; margin-bottom: 6px; }
+.rules.text { display: block; }
+.rules.text p { margin: 0 0 6px; }
+.rules.text p:last-child { margin-bottom: 0; }
 .setup { margin-top: 10px; }
 .lesson { border-left: 3px solid var(--accent); padding: 4px 14px; margin: 0 0 20px; font-size: 15px; }
 .lesson:empty { display: none; }
@@ -252,6 +256,7 @@ function makeModel(L) {
   const edgeInfo = (e) => { const cell = e >> 1; return { i: cell % L, j: Math.floor(cell / L), horizontal: (e & 1) === 0 }; };
   const ends = (e) => { const { i, j, horizontal } = edgeInfo(e);
     return horizontal ? [[i, j], [mod(i + 1), j]] : [[i, j], [i, mod(j + 1)]]; };
+  const sides = (e) => { const { i, j, horizontal } = edgeInfo(e); return horizontal ? [[i, j], [i, mod(j - 1)]] : [[i, j], [mod(i - 1), j]]; };
   const fresh = () => ({ a: new Uint8Array(nEdges), b: new Uint8Array(nEdges), k: 0 });
   const copy = (s) => ({ a: s.a.slice(), b: s.b.slice(), k: s.k });
   function apply(s, gate, e) {            // left-multiply by a Pauli on edge e, keeping the form i^k X^a Z^b
@@ -381,7 +386,7 @@ function makeModel(L) {
     return { eps, e, m: an.m.filter(([i, j]) => free.has(`${i},${j}`)) };
   }
   const windings = (s) => ({ mY: parity(s.a, Z1), mX: parity(s.a, Z2), eX: parity(s.b, X1), eY: parity(s.b, X2) });
-  return { L, nEdges, h, v, star, plaq, edgeInfo, ends, fresh, copy, apply, anyons, fuse, energy, logical,
+  return { L, nEdges, h, v, star, plaq, edgeInfo, ends, sides, fresh, copy, apply, anyons, fuse, energy, logical,
            loopValues, logicalExpect, logicalCorr, sample, deltaE, thermalSweep, decode, decoded, flipStar, probe, torusDist, windings, zRow, xRow, zCol, xCol };
 }
 // mulberry32: small seeded PRNG with good low bits (a plain LCG biases the noise)
@@ -457,9 +462,17 @@ if (typeof document !== 'undefined') (function () {
       test: (c) => fusion && c.fz.eps.length > 0 },
     { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse two ε’s: pull them at least 3 steps apart, then bring them back together.',
       hint: 'Z and then X on one edge makes two ε’s. Move one in small steps: a Z moves its e part, an X its m part. When a step pulls the two parts apart, the next one joins them again.',
-      lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts. With e × e = m × m = 1 this also fixes the rest: e × ε = m and m × ε = e.',
+      lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts.',
       test: (c) => progress.farEps && c.gs },
-    { id: 'spin', panel: 'wave', start: '00', text: 'Turn an ε once around: walk its m once around its e, then close every string.',
+    { id: 'eEps', panel: 'wave', start: '00', text: 'Bring a lone e onto an ε. What is left?',
+      hint: 'Make an ε pair (Z and then X on one edge). Away from it, make an e pair with Z, and move one of those e’s with Z until it lands on the e of an ε.',
+      lesson: 'The two e’s annihilated and the ε’s m is left on its own: e × ε = e × e × m = m. Adding an e takes away the ε’s e part.',
+      test: () => progress.eOnEps },
+    { id: 'mEps', panel: 'wave', start: '00', text: 'Now bring a lone m onto an ε.',
+      hint: 'Make an m pair with X away from an ε, and move one of those m’s with X until it lands on the square of the ε’s m.',
+      lesson: 'Now the e part is left: m × ε = m × m × e = e. That is every fusion rule of the toric code. Each anyon fused with itself gives nothing, and any two of e, m, ε fuse to the third.',
+      test: () => progress.mOnEps },
+    { part: 'Statistics', id: 'spin', panel: 'wave', start: '00', text: 'Is ε a boson or a fermion? Turn one once around: walk its m once around its e, then close every string.',
       hint: 'Press the button below for a ready ε, then click the highlighted edges one by one.',
       // a ready ε: e at vertex (2, 2), its m on the square to the upper left; then the m walks around the e, and the strings close
       setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(1, 4)], ['X', M.h(1, 3)]],
@@ -500,15 +513,22 @@ if (typeof document !== 'undefined') (function () {
       lesson: 'Without correction a bigger torus does not help. With correction the memory time grows rapidly with L: topological protection needs active error correction.',
       test: () => progress.experimentDone },
   ];
-  // the fusion rules, each with the mission that shows it (none: it follows from the others)
+  // the fusion rules, each with the mission that shows it
+  const FUSION_HEAD = '<b>A × B = C</b> on the board: bring anyon A onto anyon B, and C is what is left. '
+    + '<b>1</b> means nothing is left: no vertex or square reads −1 there, and the energy drops.';
   const FUSION_RULES = [
-    ['<i>e</i> × <i>e</i> = 1', 'fuseE', 'two e’s annihilate'],
-    ['<i>m</i> × <i>m</i> = 1', 'fuseE', 'the same with X'],
-    ['<i>e</i> × <i>m</i> = <i>ε</i>', 'fuseEM', 'they do not cancel: a new anyon'],
-    ['<i>ε</i> × <i>ε</i> = 1', 'epsEps', 'e’s cancel, m’s cancel'],
-    ['<i>e</i> × <i>ε</i> = <i>m</i>', null, 'follows: e × e × m = m'],
-    ['<i>m</i> × <i>ε</i> = <i>e</i>', null, 'follows: m × e × m = e'],
+    ['<i>e</i> × <i>e</i> = 1', 'fuseE', 'two Z string ends meet on a vertex: the strings join into one, the vertex is back to +1'],
+    ['<i>m</i> × <i>m</i> = 1', 'fuseE', 'two X string ends meet in a square: the same'],
+    ['<i>e</i> × <i>m</i> = <i>ε</i>', 'fuseEM', 'a Z end next to an X end: both −1’s stay, a new anyon'],
+    ['<i>ε</i> × <i>ε</i> = 1', 'epsEps', 'two such pairs meet: the Z ends join and the X ends join, nothing is left'],
+    ['<i>e</i> × <i>ε</i> = <i>m</i>', 'eEps', 'a Z end lands on the ε’s vertex: only its square’s −1 is left'],
+    ['<i>m</i> × <i>ε</i> = <i>e</i>', 'mEps', 'an X end lands on the ε’s square: only its vertex’s −1 is left'],
   ];
+  const STATISTICS = '<p><b>Boson or fermion</b> on the board: move the anyons around, close every string so that no anyon is left, '
+    + 'and read the sign in front of |00⟩ in the state under the board.</p>'
+    + '<p><b>Boson</b>: turning one once around, or swapping two of them, leaves +|00⟩. e and m are bosons: '
+    + 'a Z loop with no m inside, or an X loop with no e inside, never changes the sign.</p>'
+    + '<p><b>Fermion</b>: one full turn, or a swap of two, leaves −|00⟩.</p>';
   const heat = { running: false, timer: null, t: 0, series: [], ref: null, failedPassive: false, activeSweeps: 0, firstErr: null };
 
   let s, pad, X, Y;
@@ -519,7 +539,7 @@ if (typeof document !== 'undefined') (function () {
   function start(key, size = L) {
     startKey = key; L = size; M = makeModel(L);
     document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
-    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.farEps = false; progress.guide = null;
+    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.farEps = false; progress.guide = null; progress.eOnEps = false; progress.mOnEps = false;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
     geometry(); resample(); render();
     log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
@@ -764,9 +784,11 @@ if (typeof document !== 'undefined') (function () {
       : done === missions.length ? 'All missions done. Free play keeps every tool, or <button class="over">Start over</button>'
       : 'Done. The open dots are the missions still to do.';
     const rules = document.getElementById('mRules');
-    rules.hidden = free || partOf(cur) !== 'Fusion';
-    if (!rules.hidden) rules.innerHTML = FUSION_RULES.map(([eq, id, why]) =>
-      `<span class="ok">${id && progress[id] ? '✓' : ''}</span><span class="eq">${eq}</span><span class="why">${why}</span>`).join('');
+    const part = free ? null : partOf(cur);
+    rules.hidden = part !== 'Fusion' && part !== 'Statistics'; rules.className = part === 'Statistics' ? 'rules text' : 'rules';
+    if (part === 'Statistics') rules.innerHTML = STATISTICS;
+    if (part === 'Fusion') rules.innerHTML = `<div class="head">${FUSION_HEAD}</div>` + FUSION_RULES.map(([eq, id, why]) =>
+      `<span class="ok">${progress[id] ? '✓' : ''}</span><span class="eq">${eq}</span><span class="why">${why}</span>`).join('');
     document.querySelectorAll('#mHint .over').forEach((b) => b.addEventListener('click', startOver));
     const setup = document.getElementById('mSetup');
     const fresh = heat.t === 0 && !S.a.some((x) => x) && !S.b.some((x) => x);
@@ -1054,6 +1076,10 @@ if (typeof document !== 'undefined') (function () {
     if (drag.done.has(e)) return;
     drag.done.add(e);
     const before = M.anyons(S); M.apply(S, tool, e);
+    const fz = M.fuse(before), id = missions[cur] && missions[cur].id, at = (list, [i, j]) => list.some((p) => p[0] === i && p[1] === j);
+    const onEps = (meet, epsPart, lone) => meet.length === 2 && meet.filter((q) => at(epsPart, q)).length === 1 && meet.filter((q) => at(lone, q)).length === 1;
+    if (id === 'eEps' && tool === 'Z' && onEps(M.ends(e), fz.eps, fz.e)) progress.eOnEps = true;
+    if (id === 'mEps' && tool === 'X' && onEps(M.sides(e), fz.eps.map((p) => p.slice(2)), fz.m)) progress.mOnEps = true;
     log(describe(before, M.anyons(S), tool, e));
     const k = guideAt(), next = k > 0 && k < progress.guide.steps.length && progress.guide.steps[k][0];
     resample(); if (next && next !== tool) setTool(next); else render();
