@@ -109,3 +109,36 @@ def test_full_turn_of_epsilon_gives_minus_one():
     assert squares == [(1, 2), (1, 1), (2, 1), (2, 2)]
     # what is left is X on the star of the e, which is A_v = +1 on the ground state, times i^2 = -1
     assert {e for e, x in enumerate(res["a"]) if x} == set(res["star"]) and not any(res["b"]) and res["k"] == 2
+
+
+MOVE_DRIVER = r"""
+const M = makeModel(6), out = [];
+for (const offset of [[0, 0], [-1, 0], [-1, -1], [0, -1]]) {     // the 4 squares at vertex (3, 3) for the m
+  const steps = [['+x', M.h(3, 3), [4, 3]], ['-x', M.h(2, 3), [2, 3]],
+                 ['+y', M.v(3, 3), [3, 4]], ['-y', M.v(3, 2), [3, 2]]];
+  for (const [name, ed, to] of steps) {
+    // a lone ε: e pair from (3, 3) to (0, 3), m pair from the chosen square at (3, 3) up a column to row 0
+    const s = M.fresh(), [pi, pj] = [3 + offset[0], 3 + offset[1]];
+    for (let i = 0; i < 3; i++) M.apply(s, 'Z', M.h(i, 3));
+    for (let j = 0; j < pj; j++) M.apply(s, 'X', M.h(pi, j + 1));
+    const before = M.fuse(M.anyons(s)), ok = M.moveEps(s, ed), after = M.fuse(M.anyons(s));
+    out.push({ name, offset, to, ok, before, after });
+  }
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def test_move_eps_slides_an_epsilon_and_keeps_its_shape():
+    html = APP.read_text()
+    model = re.search(r"// MODEL-BEGIN.*?// MODEL-END", html, re.S).group(0)
+    out = json.loads(subprocess.run(["node", "-e", model + "\n" + MOVE_DRIVER], capture_output=True, text=True,
+                                    check=True).stdout)
+    for case in out:
+        start = [3, 3, (3 + case["offset"][0]) % 6, (3 + case["offset"][1]) % 6]
+        assert case["ok"] and start in case["before"]["eps"]
+        dx, dy = case["to"][0] - 3, case["to"][1] - 3
+        moved = [3 + dx, 3 + dy, (start[2] + dx) % 6, (start[3] + dy) % 6]
+        assert moved in case["after"]["eps"], case  # the same ε, one step along, with its m on the same side
+        n = lambda f: (len(f["eps"]), len(f["e"]), len(f["m"]))  # noqa: E731
+        assert n(case["after"]) == n(case["before"])

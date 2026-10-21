@@ -65,6 +65,7 @@ svg#board { width: 100%; height: auto; display: block; touch-action: none; user-
 button.tool[aria-pressed="true"] { border-width: 2px; padding: 6px 13px; font-weight: 600; }
 button.tool[data-tool="Z"][aria-pressed="true"] { border-color: var(--e-color); }
 button.tool[data-tool="X"][aria-pressed="true"] { border-color: var(--m-color); }
+button.tool[data-tool="eps"][aria-pressed="true"] { border-color: var(--text-primary); }
 button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--accent); }
 .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: 0; }
 .swatch.e { background: var(--e-color); border-radius: 50%; }
@@ -74,6 +75,9 @@ button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--acce
 .swatch.c { background: var(--config); height: 3px; vertical-align: 3px; width: 14px; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
 .legend b { color: var(--text-primary); }
+.legend #fuseBtn { font-size: 14px; padding: 3px 10px; margin-right: 8px; }
+.legend #fuseBtn[aria-pressed="true"] { padding: 2px 9px; }
+.toolbar button { white-space: nowrap; }
 .log { font-size: 15px; color: var(--text-primary); min-height: 1.55em; margin-top: 12px; }
 .log b { color: var(--text-primary); }
 .state { margin-top: 14px; padding: 14px 18px; background: var(--surface-1); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06);
@@ -159,8 +163,8 @@ svg#torus.turning { cursor: grabbing; }
       <div class="toolbar" role="toolbar" aria-label="Tools">
         <button class="tool" data-tool="Z" aria-pressed="true" title="Key 1"><span class="swatch e"></span>Z</button>
         <button class="tool" data-tool="X" aria-pressed="false" title="Key 2"><span class="swatch m"></span>X</button>
+        <button class="tool" data-tool="eps" aria-pressed="false" title="Key 5: click an edge at an ε’s vertex to slide the ε along it"><span class="swatch eps"></span>Move ε</button>
         <button class="tool" data-tool="inspect" aria-pressed="false" title="Key 3">Inspect</button>
-        <button id="fuseBtn" aria-pressed="false" title="Key 4: draw an e next to an m as one ε"><span class="swatch eps"></span>Fusion view</button>
         <span class="gap"></span>
         <button id="undo" title="Ctrl/Cmd+Z">Undo</button>
         <button id="reset">Reset</button>
@@ -168,7 +172,8 @@ svg#torus.turning { cursor: grabbing; }
       <div class="legend">
         <span><span class="swatch e"></span><b>e</b>: a vertex with A<sub>v</sub> = −1, at an end of a Z string</span>
         <span><span class="swatch m"></span><b>m</b>: a square with B<sub>p</sub> = −1, at an end of an X string</span>
-        <span id="legendEps" hidden><span class="swatch eps"></span><b>ε</b> = e × m: an e and an m side by side</span>
+        <span><button id="fuseBtn" aria-pressed="false" title="Key 4: draw an e next to an m as one ε"><span class="swatch eps"></span>Fusion view</button>
+          <span id="legendEps" hidden><b>ε</b> = e × m: an e and an m side by side</span></span>
       </div>
       <div class="log" id="log"></div>
       <div class="state">
@@ -385,8 +390,20 @@ function makeModel(L) {
     }
     return { eps, e, m: an.m.filter(([i, j]) => free.has(`${i},${j}`)) };
   }
+  // slide an ε one step along edge ed at its vertex: Z moves its e along the edge, and X on the side that its square
+  // crosses moves its m the same step, so the ε keeps its shape. Returns false if no ε has its e at an end of ed.
+  function moveEps(s, ed) {
+    const [a, b] = ends(ed), { horizontal } = edgeInfo(ed), at = (q, [i, j]) => q[0] === i && q[1] === j;
+    const p = fuse(anyons(s)).eps.find((q) => at(q, a) || at(q, b));
+    if (!p) return false;
+    const fwd = at(p, a), [, , pi, pj] = p;     // fwd: the ε steps towards +x (+y)
+    apply(s, 'Z', ed);
+    apply(s, 'X', horizontal ? (fwd ? v(pi + 1, pj) : v(pi, pj)) : (fwd ? h(pi, pj + 1) : h(pi, pj)));
+    return true;
+  }
+  const act = (s, tool, ed) => (tool === 'eps' ? moveEps(s, ed) : (apply(s, tool, ed), true));
   const windings = (s) => ({ mY: parity(s.a, Z1), mX: parity(s.a, Z2), eX: parity(s.b, X1), eY: parity(s.b, X2) });
-  return { L, nEdges, h, v, star, plaq, edgeInfo, ends, sides, fresh, copy, apply, anyons, fuse, energy, logical,
+  return { L, nEdges, h, v, star, plaq, edgeInfo, ends, sides, fresh, copy, apply, anyons, fuse, moveEps, act, energy, logical,
            loopValues, logicalExpect, logicalCorr, sample, deltaE, thermalSweep, decode, decoded, flipStar, probe, torusDist, windings, zRow, xRow, zCol, xCol };
 }
 // mulberry32: small seeded PRNG with good low bits (a plain LCG biases the noise)
@@ -458,21 +475,21 @@ if (typeof document !== 'undefined') (function () {
       test: (c) => progress.fourE && c.ne === 2 && c.nm === 0 },
     { id: 'fuseEM', panel: 'wave', start: '00', text: 'Now put an e next to an m, and switch on Fusion view.',
       hint: 'Z and then X on the same edge makes an e pair and an m pair around it. Fusion view is below the board (key 4).',
-      lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z on one of its edges moves the e part, an X the m part. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
+      lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z moves its e part, an X its m part, and <b>Move ε</b> slides both together. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
       test: (c) => fusion && c.fz.eps.length > 0 },
     { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse two ε’s: bring two ε’s that are 3 steps apart together.',
       hint: 'Press the button below for two ε’s already 3 steps apart, then click the highlighted edges one by one.',
       // two ε's: one with its e on vertex (2, 2), the other pulled 3 steps right; then the right one walks back and the pair annihilates
       setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(2, 2)], ['Z', M.h(3, 2)], ['X', M.v(3, 1)], ['Z', M.h(4, 2)], ['X', M.v(4, 1)]],
-      guide: (M) => [['Z', M.h(4, 2)], ['X', M.v(4, 1)], ['Z', M.h(3, 2)], ['X', M.v(3, 1)], ['Z', M.h(2, 2)], ['X', M.h(2, 2)]],
+      guide: (M) => [['eps', M.h(4, 2)], ['eps', M.h(3, 2)], ['Z', M.h(2, 2)], ['X', M.h(2, 2)]],
       placeLabel: 'Place two ε’s for me', placed: 'Two ε’s, 3 steps apart. Each is an e on a vertex with its m on a neighbouring square.',
-      guideText: (k, [G]) => k < 4 ? `<b>${G}</b> on the highlighted edge moves the right ε’s ${G === 'Z' ? 'e' : 'm'} part one step left. The ε stays in one piece (${k} of 4 steps).`
-        : k === 4 ? 'The two ε’s are side by side. <b>Z</b> on the highlighted edge: the two e parts meet and annihilate, e × e = 1.'
+      guideText: (k) => k < 2 ? `<b>Move ε</b> on the highlighted edge: the right ε slides one step left, its e along the edge and its m beside it (${k} of 2 steps).`
+        : k === 2 ? 'The two ε’s are side by side. <b>Z</b> on the highlighted edge: the two e parts meet and annihilate, e × e = 1.'
         : 'Last: <b>X</b> on the highlighted edge, and the two m parts annihilate too, m × m = 1.',
       lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts.',
       test: (c) => progress.farEps && c.gs },
     { id: 'eEps', panel: 'wave', start: '00', text: 'Bring a lone e onto an ε. What is left?',
-      hint: 'Make an ε pair (Z and then X on one edge). Away from it, make an e pair with Z, and move one of those e’s with Z until it lands on the e of an ε.',
+      hint: 'Make an ε pair (Z and then X on one edge). Away from it, make an e pair with Z. Then move one of those e’s with Z onto the e of an ε, or slide an ε onto it with Move ε.',
       lesson: 'The two e’s annihilated and the ε’s m is left on its own: e × ε = e × e × m = m. Adding an e takes away the ε’s e part.',
       test: () => progress.eOnEps },
     { id: 'mEps', panel: 'wave', start: '00', text: 'Now bring a lone m onto an ε.',
@@ -554,9 +571,9 @@ if (typeof document !== 'undefined') (function () {
   }
   // a guided mission: the states after each guided step; where the board is on the guide, or -1 if it has left it
   function placeGuide(m) {
-    start(m.start); for (const [G, e] of m.setup(M)) M.apply(S, G, e);
+    start(m.start); for (const [G, e] of m.setup(M)) M.act(S, G, e);
     const steps = m.guide(M), states = [M.copy(S)];
-    for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); M.apply(s2, G, e); states.push(s2); }
+    for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); M.act(s2, G, e); states.push(s2); }
     progress.guide = { id: m.id, steps, states }; setFusion(true); setTool(steps[0][0]);
     log(m.placed);
   }
@@ -617,7 +634,7 @@ if (typeof document !== 'undefined') (function () {
     const k = guideAt();
     if (k !== null && k >= 0 && k < progress.guide.steps.length) {
       const [G, e] = progress.guide.steps[k], gG = gClip();
-      for (const cp of edgeCopies(e)) line(G === 'Z' ? cp : dualSeg(cp), { stroke: col('--accent'), 'stroke-width': 13, 'stroke-linecap': 'round', opacity: 0.45 }, gG);
+      for (const cp of edgeCopies(e)) line(G === 'X' ? dualSeg(cp) : cp, { stroke: col('--accent'), 'stroke-width': 13, 'stroke-linecap': 'round', opacity: 0.45 }, gG);
     }
     const g = gClip();
     for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
@@ -1082,13 +1099,14 @@ if (typeof document !== 'undefined') (function () {
   }
   function applyEdge(e) {
     if (drag.done.has(e)) return;
+    const before = M.anyons(S);
+    if (!M.act(S, tool, e)) { log('<b>Move ε</b>: click an edge that touches the vertex of an ε (the half orange, half blue disc).'); return; }
     drag.done.add(e);
-    const before = M.anyons(S); M.apply(S, tool, e);
     const fz = M.fuse(before), id = missions[cur] && missions[cur].id, at = (list, [i, j]) => list.some((p) => p[0] === i && p[1] === j);
     const onEps = (meet, epsPart, lone) => meet.length === 2 && meet.filter((q) => at(epsPart, q)).length === 1 && meet.filter((q) => at(lone, q)).length === 1;
-    if (id === 'eEps' && tool === 'Z' && onEps(M.ends(e), fz.eps, fz.e)) progress.eOnEps = true;
+    if (id === 'eEps' && (tool === 'Z' || tool === 'eps') && onEps(M.ends(e), fz.eps, fz.e)) progress.eOnEps = true;
     if (id === 'mEps' && tool === 'X' && onEps(M.sides(e), fz.eps.map((p) => p.slice(2)), fz.m)) progress.mOnEps = true;
-    log(describe(before, M.anyons(S), tool, e));
+    log(tool === 'eps' ? `<b>Move ε</b> along ${edgeName(e)}: Z on that edge moved its e, an X beside it moved its m.` : describe(before, M.anyons(S), tool, e));
     const k = guideAt(), next = k > 0 && k < progress.guide.steps.length && progress.guide.steps[k][0];
     resample(); if (next && next !== tool) setTool(next); else render();
   }
@@ -1119,6 +1137,7 @@ if (typeof document !== 'undefined') (function () {
 
   function setTool(t) {
     tool = t; if (t !== 'inspect') inspect = null;
+    if (t === 'eps' && !fusion) setFusion(true);   // an ε is only drawn in the fusion view
     if (t === 'inspect' && cur < 0) view = 'wave';
     document.querySelectorAll('button.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
     render();
@@ -1136,7 +1155,7 @@ if (typeof document !== 'undefined') (function () {
   document.getElementById('startOver').addEventListener('click', startOver);
   document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
-    const map = { 1: 'Z', 2: 'X', 3: 'inspect' };
+    const map = { 1: 'Z', 2: 'X', 3: 'inspect', 5: 'eps' };
     if (map[e.key]) setTool(map[e.key]);
     if (e.key === '4') setFusion(!fusion);
     if (e.key === 'Escape') { inspect = null; render(); }
