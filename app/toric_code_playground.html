@@ -124,6 +124,10 @@ table.amps tr[data-m]:hover td { background: var(--surface-0); }
 #heatBtn[aria-pressed="true"] { border-color: var(--accent); border-width: 2px; padding: 6px 13px; font-weight: 600; }
 .chart { position: relative; }
 .chart svg { width: 100%; height: auto; display: block; }
+.torus-wrap { margin-top: 14px; background: var(--surface-1); border-radius: 14px; padding: 10px 10px 6px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+svg#torus { width: 100%; height: auto; display: block; touch-action: none; user-select: none; cursor: grab; }
+svg#torus.turning { cursor: grabbing; }
+.torus-wrap .small { text-align: center; color: var(--text-secondary); font-size: 13px; }
 .tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--grid); border-radius: 6px;
   padding: 4px 8px; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.12); display: none; }
 </style>
@@ -153,6 +157,8 @@ table.amps tr[data-m]:hover td { background: var(--surface-0); }
         <div class="logical" id="dLogical"></div>
         <div class="energy">E − E₀<b id="cE">0</b></div>
       </div>
+      <div class="torus-wrap"><svg id="torus" aria-label="The same lattice drawn on a torus"></svg>
+        <div class="small">the same state on the torus: drag to turn it</div></div>
     </div>
 
     <div class="right card">
@@ -527,8 +533,88 @@ if (typeof document !== 'undefined') (function () {
       ln.style.cursor = tool === 'inspect' ? 'crosshair' : 'pointer';
       el('title', {}, ln).textContent = edgeName(e);
     }
+    torusView();
     update(c);
   }
+
+  // ---------- the same lattice, drawn on a torus
+  // Lattice x runs around the hole (angle u), lattice y around the tube (angle v); x = L/2 faces the viewer, y = L/2 runs along the top.
+  const tor = { svg: document.getElementById('torus'), W: 560, H: 260, R: 1, r: 0.42, phi: 0, tilt: 0.8, turn: null };
+  function torusView() {
+    const col = css(), { W, H, R, r } = tor, out = [], ghost = [];
+    const cp = Math.cos(tor.phi), sp = Math.sin(tor.phi), ct = Math.cos(tor.tilt), st = Math.sin(tor.tilt);
+    const half = (R + r) * st + r * ct, k = 0.95 * Math.min(W / 2 / (R + r), H / 2 / half);
+    // lattice point (x, y), lifted by h along the normal -> [screen x, screen y, depth (larger is nearer), lighting, facing]
+    const P = (x, y, h = 0) => {
+      const u = 2 * Math.PI * x / L - 1.5 * Math.PI, v = 2 * Math.PI * y / L - Math.PI / 2, rr = r + h;
+      const n = [Math.cos(v) * Math.cos(u), Math.cos(v) * Math.sin(u), Math.sin(v)];
+      const p = [(R + rr * Math.cos(v)) * Math.cos(u), (R + rr * Math.cos(v)) * Math.sin(u), rr * n[2]];
+      const rot = (a) => [a[0] * cp - a[1] * sp, a[0] * sp + a[1] * cp, a[2]], q = rot(p), m = rot(n);
+      const up = m[1] * st + m[2] * ct, facing = -m[1] * ct + m[2] * st;
+      return [W / 2 + k * q[0], H / 2 - k * (q[1] * st + q[2] * ct), -q[1] * ct + q[2] * st, -0.4 * m[0] + 0.55 * up + 0.73 * facing, facing];
+    };
+    const hex = (c) => [1, 3, 5].map((o) => parseInt(c.slice(o, o + 2), 16));
+    const dark = hex(col('--surface-1')).reduce((a, b) => a + b, 0) < 384;
+    const lit = hex(col(dark ? '--grid' : '--surface-0')), shade = hex(col(dark ? '--surface-0' : '--text-muted'));
+    const fill = (f) => `rgb(${lit.map((a, n) => Math.round(shade[n] + (a - shade[n]) * f)).join(',')})`;
+    // the surface, in small opaque-ish patches
+    const nu = Math.max(48, 4 * L), nv = Math.max(24, 2 * L);
+    for (let a = 0; a < nu; a++) for (let b = 0; b < nv; b++) {
+      const x0 = a * L / nu, x1 = (a + 1) * L / nu, y0 = b * L / nv, y1 = (b + 1) * L / nv;
+      const c = [P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1)], mid = P((x0 + x1) / 2, (y0 + y1) / 2);
+      const f = 0.2 + 0.8 * Math.max(0, mid[3]);
+      out.push([mid[2], `<polygon points="${c.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ')}" fill="${fill(f)}" stroke="${fill(f)}" stroke-width="0.6" opacity="0.88"/>`]);
+    }
+    // a path on the surface, cut into short pieces so that each piece is sorted by its own depth;
+    // the bias puts what lies on the near side of the surface after the patches it lies on, and the far side before
+    const key = (q) => q[2] + 0.12 * q[4];
+    const path = (x1, y1, x2, y2, h, attrs, n = 4, see = true) => {
+      for (let t = 0; t < n; t++) {
+        const a = P(x1 + (x2 - x1) * t / n, y1 + (y2 - y1) * t / n, h), b = P(x1 + (x2 - x1) * (t + 1) / n, y1 + (y2 - y1) * (t + 1) / n, h);
+        const s = `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" ${attrs}/>`;
+        out.push([(key(a) + key(b)) / 2, s]); if (see) ghost.push(s);
+      }
+    };
+    const seg = (e) => { const { i, j, horizontal } = M.edgeInfo(e); return horizontal ? [i, j, i + 1, j] : [i, j, i, j + 1]; };
+    for (let e = 0; e < M.nEdges; e++) path(...seg(e), 0.01, `stroke="${col('--text-muted')}" stroke-width="0.9" opacity="0.7"`, 3, false);
+    if (highlight) for (const { kind, idx } of [].concat(highlight)) {
+      for (const e of { Zx: M.zRow, Xx: M.xRow, Zy: M.zCol, Xy: M.xCol }[kind](idx))
+        path(...(kind[0] === 'Z' ? seg(e) : dualSeg(seg(e))), 0.02, `stroke="${col('--hover')}" stroke-width="7" stroke-linecap="round" opacity="0.5"`);
+    }
+    for (let e = 0; e < M.nEdges; e++) {
+      if (S.b[e]) path(...seg(e), 0.03, `stroke="${col('--e-color')}" stroke-width="3.5" stroke-linecap="round"`);
+      if (S.a[e]) path(...dualSeg(seg(e)), 0.03, `stroke="${col('--m-color')}" stroke-width="3.5" stroke-dasharray="4 3"`);
+    }
+    // anyons as small patches lying on the surface, all of the same size on the surface: a lattice step is longest
+    // around the outside of the ring, so the patch is sized by the shortest step (around the tube) and converted back
+    const rho = 0.2 * 2 * Math.PI * r / L;
+    const patch = (corners, x, y, color) => {
+      const v = 2 * Math.PI * y / L - Math.PI / 2, gx = 2 * Math.PI * (R + r * Math.cos(v)) / L, gy = 2 * Math.PI * r / L;
+      const c = corners.map(([dx, dy]) => P(x + rho * dx / gx, y + rho * dy / gy, 0.05)), mid = P(x, y, 0.05);
+      const s = `<polygon points="${c.map((q) => `${q[0].toFixed(1)},${q[1].toFixed(1)}`).join(' ')}" fill="${color}" stroke="${col('--surface-1')}" stroke-width="1.2"/>`;
+      out.push([key(mid), s]); ghost.push(s);
+    };
+    const circle = Array.from({ length: 12 }, (_, n) => [Math.cos(n * Math.PI / 6), Math.sin(n * Math.PI / 6)]);
+    const an = M.anyons(S);
+    for (const [i, j] of an.e) patch(circle, i, j, col('--e-color'));
+    for (const [i, j] of an.m) patch([[-0.9, -0.9], [0.9, -0.9], [0.9, 0.9], [-0.9, 0.9]], i + 0.5, j + 0.5, col('--m-color'));
+    out.sort((a, b) => a[0] - b[0]);
+    tor.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    // strings and anyons once more, faintly on top, so that the parts behind the surface still show through
+    tor.svg.innerHTML = out.map((o) => o[1]).join('') + `<g opacity="0.22">${ghost.join('')}</g>`;
+  }
+  tor.svg.addEventListener('pointerdown', (evt) => {
+    evt.preventDefault(); tor.svg.setPointerCapture(evt.pointerId);
+    tor.turn = [evt.clientX, evt.clientY]; tor.svg.classList.add('turning');
+  });
+  tor.svg.addEventListener('pointermove', (evt) => {
+    if (!tor.turn) return;
+    tor.phi -= 0.01 * (evt.clientX - tor.turn[0]);
+    tor.tilt = Math.max(0.15, Math.min(1.25, tor.tilt + 0.01 * (evt.clientY - tor.turn[1])));
+    tor.turn = [evt.clientX, evt.clientY]; torusView();
+  });
+  const endTurn = () => { tor.turn = null; tor.svg.classList.remove('turning'); };
+  tor.svg.addEventListener('pointerup', endTurn); tor.svg.addEventListener('pointercancel', endTurn);
 
   // ---------- the state, as Python prints it
   const KETS = ['00', '01', '10', '11'];
