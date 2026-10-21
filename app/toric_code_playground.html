@@ -460,8 +460,15 @@ if (typeof document !== 'undefined') (function () {
       hint: 'Z and then X on the same edge makes an e pair and an m pair around it. Fusion view is below the board (key 4).',
       lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z on one of its edges moves the e part, an X the m part. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
       test: (c) => fusion && c.fz.eps.length > 0 },
-    { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse two ε’s: pull them at least 3 steps apart, then bring them back together.',
-      hint: 'Z and then X on one edge makes two ε’s. Move one in small steps: a Z moves its e part, an X its m part. When a step pulls the two parts apart, the next one joins them again.',
+    { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse two ε’s: bring two ε’s that are 3 steps apart together.',
+      hint: 'Press the button below for two ε’s already 3 steps apart, then click the highlighted edges one by one.',
+      // two ε's: one with its e on vertex (2, 2), the other pulled 3 steps right; then the right one walks back and the pair annihilates
+      setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(2, 2)], ['Z', M.h(3, 2)], ['X', M.v(3, 1)], ['Z', M.h(4, 2)], ['X', M.v(4, 1)]],
+      guide: (M) => [['Z', M.h(4, 2)], ['X', M.v(4, 1)], ['Z', M.h(3, 2)], ['X', M.v(3, 1)], ['Z', M.h(2, 2)], ['X', M.h(2, 2)]],
+      placeLabel: 'Place two ε’s for me', placed: 'Two ε’s, 3 steps apart. Each is an e on a vertex with its m on a neighbouring square.',
+      guideText: (k, [G]) => k < 4 ? `<b>${G}</b> on the highlighted edge moves the right ε’s ${G === 'Z' ? 'e' : 'm'} part one step left. The ε stays in one piece (${k} of 4 steps).`
+        : k === 4 ? 'The two ε’s are side by side. <b>Z</b> on the highlighted edge: the two e parts meet and annihilate, e × e = 1.'
+        : 'Last: <b>X</b> on the highlighted edge, and the two m parts annihilate too, m × m = 1.',
       lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts.',
       test: (c) => progress.farEps && c.gs },
     { id: 'eEps', panel: 'wave', start: '00', text: 'Bring a lone e onto an ε. What is left?',
@@ -477,7 +484,8 @@ if (typeof document !== 'undefined') (function () {
       // a ready ε: e at vertex (2, 2), its m on the square to the upper left; then the m walks around the e, and the strings close
       setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(1, 4)], ['X', M.h(1, 3)]],
       guide: (M) => [['X', M.h(1, 2)], ['X', M.v(2, 1)], ['X', M.h(2, 2)], ['X', M.v(2, 2)], ['X', M.h(1, 3)], ['X', M.h(1, 4)], ['Z', M.h(2, 2)]],
-      guideText: (k) => k < 4 ? `<b>${['X', 'X', 'X', 'X'][k]}</b> on the highlighted edge: the m steps to the next square around the e, and the ε turns a quarter (${k} of 4 done).`
+      placeLabel: 'Place an ε for me', placed: 'An ε is ready: its e on the vertex, its m on the square to the upper left.',
+      guideText: (k) => k < 4 ? `<b>X</b> on the highlighted edge: the m steps to the next square around the e, and the ε turns a quarter (${k} of 4 done).`
         : k < 6 ? 'The ε has turned once around. Now close the strings: <b>X</b> on the highlighted edge moves the m back towards its partner.'
         : 'Last step: <b>Z</b> on the highlighted edge brings the two e’s together.',
       lesson: '|ψ⟩ = −|00⟩. The dashed square left behind is the path of the m: a closed X loop around the e. It crosses the e’s Z string once, and ZX = −XZ, so a full turn of ε multiplied the state by −1. This is the e–m braiding phase again, now a property of a single particle. A boson turned by 360° gets no sign. For anyons the phase from swapping two identical particles equals the phase from one full turn, so two ε’s that swap places also pick up −1: e and m are bosons, but their bound state ε is a fermion.',
@@ -550,7 +558,7 @@ if (typeof document !== 'undefined') (function () {
     const steps = m.guide(M), states = [M.copy(S)];
     for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); M.apply(s2, G, e); states.push(s2); }
     progress.guide = { id: m.id, steps, states }; setFusion(true); setTool(steps[0][0]);
-    log('An ε is ready: its e on the vertex, its m on the square to the upper left.');
+    log(m.placed);
   }
   function guideAt() {
     const g = progress.guide, m = missions[cur];
@@ -778,7 +786,7 @@ if (typeof document !== 'undefined') (function () {
       : `${cur + 1} of ${missions.length} · ${partOf(cur)}`;
     document.getElementById('mTask').innerHTML = free ? 'Free play' : m.text;
     document.getElementById('mHint').innerHTML = free ? 'Pick a start state, a size and a view. Every tool still works.'
-      : !progress[m.id] && m.guide && guideAt() !== null ? (guideAt() >= 0 ? m.guideText(guideAt())
+      : !progress[m.id] && m.guide && guideAt() !== null ? (guideAt() >= 0 ? m.guideText(guideAt(), m.guide(M)[guideAt()] || [])
         : 'That was not the highlighted edge. Undo to go back to the guide, or carry on your own way.')
       : !progress[m.id] ? m.hint + (m.id === 'basis' ? ` (${progress.visited.size} of 4 so far)` : '')
       : done === missions.length ? 'All missions done. Free play keeps every tool, or <button class="over">Start over</button>'
@@ -792,7 +800,7 @@ if (typeof document !== 'undefined') (function () {
     document.querySelectorAll('#mHint .over').forEach((b) => b.addEventListener('click', startOver));
     const setup = document.getElementById('mSetup');
     const fresh = heat.t === 0 && !S.a.some((x) => x) && !S.b.some((x) => x);
-    setup.innerHTML = free ? '' : m.guide && !progress[m.id] && guideAt() === null ? '<button class="place">Place an ε for me</button>'
+    setup.innerHTML = free ? '' : m.guide && !progress[m.id] && guideAt() === null ? `<button class="place">${m.placeLabel}</button>`
       : m.start && m.start !== startKey ? `<button>Start from |${STARTS[m.start][0]}⟩</button>`
       : m.fresh && !fresh ? '<button>Start with a fresh board</button>' : '';
     if (setup.querySelector('.place')) setup.firstChild.addEventListener('click', () => placeGuide(m));
