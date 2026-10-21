@@ -392,16 +392,18 @@ function makeModel(L) {
   }
   // slide an ε one step along edge ed at its vertex: Z moves its e along the edge, and X on the side that its square
   // crosses moves its m the same step, so the ε keeps its shape. Returns false if no ε has its e at an end of ed.
-  function moveEps(s, ed) {
+  // If both ends hold an ε, the one at vertex prefer moves. Returns the vertex the ε moved to.
+  function moveEps(s, ed, prefer) {
     const [a, b] = ends(ed), { horizontal } = edgeInfo(ed), at = (q, [i, j]) => q[0] === i && q[1] === j;
-    const p = fuse(anyons(s)).eps.find((q) => at(q, a) || at(q, b));
+    const cands = fuse(anyons(s)).eps.filter((q) => at(q, a) || at(q, b));
+    const p = cands.find((q) => prefer && at(q, prefer)) || cands[0];
     if (!p) return false;
     const fwd = at(p, a), [, , pi, pj] = p;     // fwd: the ε steps towards +x (+y)
     apply(s, 'Z', ed);
     apply(s, 'X', horizontal ? (fwd ? v(pi + 1, pj) : v(pi, pj)) : (fwd ? h(pi, pj + 1) : h(pi, pj)));
-    return true;
+    return fwd ? b : a;
   }
-  const act = (s, tool, ed) => (tool === 'eps' ? moveEps(s, ed) : (apply(s, tool, ed), true));
+  const act = (s, tool, ed, prefer) => (tool === 'eps' ? moveEps(s, ed, prefer) : (apply(s, tool, ed), true));
   const windings = (s) => ({ mY: parity(s.a, Z1), mX: parity(s.a, Z2), eX: parity(s.b, X1), eY: parity(s.b, X2) });
   return { L, nEdges, h, v, star, plaq, edgeInfo, ends, sides, fresh, copy, apply, anyons, fuse, moveEps, act, energy, logical,
            loopValues, logicalExpect, logicalCorr, sample, deltaE, thermalSweep, decode, decoded, flipStar, probe, torusDist, windings, zRow, xRow, zCol, xCol };
@@ -445,10 +447,15 @@ if (typeof document !== 'undefined') (function () {
     'phi+': ['Φ<sup>+</sup>', START_STATES.phip] };
   const VIEWS = { wave: 'Pictures', loops: 'Loops', heat: 'Heat' };
   const CORR = [[0, 'off'], [1, 'every sweep'], [10, 'every 10']];
-  let M, S, C0, startKey = '00', history, tool = 'Z', fusion = false, drag = null, highlight = null, inspect = null, samples = [];
+  let M, S, C0, startKey = '00', history, tool = 'Z', fusion = false, lastEps = null, drag = null, highlight = null, inspect = null, samples = [];
   let progress = {}, cur = 0, lessonOf = null, view = 'wave', corrEvery = 0;
   const rand = makeRng(12345);
 
+  // ready-made pairs for the fusion missions: from vertex (i, j) two steps along x. Every ε points the same way,
+  // its m on the square to the upper right of its e, so that two ε's can land exactly on each other.
+  const ePair = (M, i, j) => [['Z', M.h(i, j)], ['Z', M.h(i + 1, j)]];
+  const mPair = (M, i, j) => [['X', M.v(i + 1, j)], ['X', M.v(i + 2, j)]];
+  const epsPair = (M, i, j) => [...ePair(M, i, j), ...mPair(M, i, j)];
   const missions = [
     { part: 'Anyons', id: 'pair', panel: 'wave', start: '00', text: 'Create a pair of e anyons.', hint: 'Z is selected. Click any edge and watch the energy.',
       lesson: 'One Z flipped two stars to −1: two e anyons, energy +4. Anyons come in pairs.', test: (c) => c.ne >= 2 },
@@ -469,32 +476,43 @@ if (typeof document !== 'undefined') (function () {
     { id: 'braid', panel: null, start: '00', text: 'Braid: take an e around an m, then annihilate everything.', hint: 'Make an m pair, then an e pair, walk one e around one m, close all strings.',
       lesson: '|ψ⟩ = −|00⟩: back to the start state, but with a minus sign. The Z loop crossed the m’s X string once, and ZX = −XZ. That −1 is the e–m braiding phase.',
       test: (c) => c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
-    { part: 'Fusion', id: 'fuseE', panel: 'wave', start: '00', text: 'Make two separate e pairs, then bring an e of one pair onto an e of the other.',
-      hint: 'Two Z clicks far apart, then extend one string until its end reaches an e of the other string.',
-      lesson: 'Energy +8 → +4: two e’s that meet vanish, whichever pairs they came from, leaving one string with an e at each end. Two e’s fuse to nothing: e × e = 1. With X the same holds for m: m × m = 1.',
+    { part: 'Fusion', id: 'fuseE', panel: 'wave', start: '00', text: 'Fuse e’s from two different pairs: bring e₂ onto e₃.',
+      hint: 'Press the button below for two e pairs, e₁ — e₂ and e₃ — e₄, then click the highlighted edges.',
+      setup: (M) => [...ePair(M, 1, 4), ...ePair(M, 3, 2)], labels: [['e', 1, 4, 'e₁'], ['e', 3, 4, 'e₂'], ['e', 3, 2, 'e₃'], ['e', 5, 2, 'e₄']],
+      guide: (M) => [['Z', M.v(3, 3)], ['Z', M.v(3, 2)]],
+      placeLabel: 'Place two e pairs for me', placed: 'Two e pairs: e₁ — e₂ along the top, e₃ — e₄ below.',
+      guideText: (k) => (k === 0 ? '<b>Z</b> on the highlighted edge moves e₂ one step down.' : '<b>Z</b> again: e₂ lands on e₃.'),
+      lesson: 'Energy +8 → +4: e₂ and e₃ vanished although they came from different pairs, and the two strings joined into one, from e₁ to e₄. Two e’s fuse to nothing: e × e = 1. With X the same holds for m: m × m = 1.',
       test: (c) => progress.fourE && c.ne === 2 && c.nm === 0 },
     { id: 'fuseEM', panel: 'wave', start: '00', text: 'Now put an e next to an m, and switch on Fusion view.',
       hint: 'Z and then X on the same edge makes an e pair and an m pair around it. Fusion view is below the board (key 4).',
       lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z moves its e part, an X its m part, and <b>Move ε</b> slides both together. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
       test: (c) => fusion && c.fz.eps.length > 0 },
-    { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse two ε’s: bring two ε’s that are 3 steps apart together.',
-      hint: 'Press the button below for two ε’s already 3 steps apart, then click the highlighted edges one by one.',
-      // two ε's: one with its e on vertex (2, 2), the other pulled 3 steps right; then the right one walks back and the pair annihilates
-      setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(2, 2)], ['Z', M.h(3, 2)], ['X', M.v(3, 1)], ['Z', M.h(4, 2)], ['X', M.v(4, 1)]],
-      guide: (M) => [['eps', M.h(4, 2)], ['eps', M.h(3, 2)], ['Z', M.h(2, 2)], ['X', M.h(2, 2)]],
-      placeLabel: 'Place two ε’s for me', placed: 'Two ε’s, 3 steps apart. Each is an e on a vertex with its m on a neighbouring square.',
-      guideText: (k) => k < 2 ? `<b>Move ε</b> on the highlighted edge: the right ε slides one step left, its e along the edge and its m beside it (${k} of 2 steps).`
-        : k === 2 ? 'The two ε’s are side by side. <b>Z</b> on the highlighted edge: the two e parts meet and annihilate, e × e = 1.'
-        : 'Last: <b>X</b> on the highlighted edge, and the two m parts annihilate too, m × m = 1.',
-      lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts.',
-      test: (c) => progress.farEps && c.gs },
-    { id: 'eEps', panel: 'wave', start: '00', text: 'Bring a lone e onto an ε. What is left?',
-      hint: 'Make an ε pair (Z and then X on one edge). Away from it, make an e pair with Z. Then move one of those e’s with Z onto the e of an ε, or slide an ε onto it with Move ε.',
-      lesson: 'The two e’s annihilated and the ε’s m is left on its own: e × ε = e × e × m = m. Adding an e takes away the ε’s e part.',
+    { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse ε’s from two different pairs: bring ε₂ onto ε₃.',
+      hint: 'Press the button below for two ε pairs, ε₁ — ε₂ and ε₃ — ε₄, then click the highlighted edges.',
+      setup: (M) => [...epsPair(M, 1, 4), ...epsPair(M, 3, 2)], labels: [['eps', 1, 4, 'ε₁'], ['eps', 3, 4, 'ε₂'], ['eps', 3, 2, 'ε₃'], ['eps', 5, 2, 'ε₄']],
+      guide: (M) => [['eps', M.v(3, 3)], ['eps', M.v(3, 2)]],
+      placeLabel: 'Place two ε pairs for me',
+      placed: 'Two ε pairs: ε₁ — ε₂ along the top, ε₃ — ε₄ below. Every ε points the same way, its m on the square to the upper right of its e.',
+      guideText: (k) => (k === 0 ? '<b>Move ε</b> on the highlighted edge: ε₂ slides one step down, its e along the edge and its m beside it.'
+        : '<b>Move ε</b> again: ε₂ lands on ε₃, e on e and m on m.'),
+      lesson: 'Energy +16 → +8: ε₂ and ε₃ vanished, both parts at once, and the strings joined from ε₁ to ε₄: ε × ε = (e × e)(m × m) = 1. It takes one step because the two ε’s point the same way. Two ε’s that point different ways cannot land exactly on each other: when their m’s meet, their e’s are still apart. Those two e’s are an e × e pair with no charge in total, and a short Z string removes them.',
+      test: (c) => progress.fourEps && c.fz.eps.length === 2 && !c.fz.e.length && !c.fz.m.length },
+    { id: 'eEps', panel: 'wave', start: '00', text: 'Bring a lone e onto an ε: e₂ onto ε₃. What is left?',
+      hint: 'Press the button below for an e pair e₁ — e₂ and an ε pair ε₃ — ε₄, then click the highlighted edges.',
+      setup: (M) => [...ePair(M, 1, 4), ...epsPair(M, 3, 2)], labels: [['e', 1, 4, 'e₁'], ['e', 3, 4, 'e₂'], ['eps', 3, 2, 'ε₃'], ['eps', 5, 2, 'ε₄']],
+      guide: (M) => [['Z', M.v(3, 3)], ['Z', M.v(3, 2)]],
+      placeLabel: 'Place the pairs for me', placed: 'An e pair e₁ — e₂ along the top, an ε pair ε₃ — ε₄ below.',
+      guideText: (k) => (k === 0 ? '<b>Z</b> on the highlighted edge moves e₂ one step down.' : '<b>Z</b> again: e₂ lands on the e part of ε₃.'),
+      lesson: 'e₂ and the e part of ε₃ annihilated, and the m part of ε₃ is left on its own: e × ε = e × e × m = m. Adding an e takes away the ε’s e part.',
       test: () => progress.eOnEps },
-    { id: 'mEps', panel: 'wave', start: '00', text: 'Now bring a lone m onto an ε.',
-      hint: 'Make an m pair with X away from an ε, and move one of those m’s with X until it lands on the square of the ε’s m.',
-      lesson: 'Now the e part is left: m × ε = m × m × e = e. That is every fusion rule of the toric code. Each anyon fused with itself gives nothing, and any two of e, m, ε fuse to the third.',
+    { id: 'mEps', panel: 'wave', start: '00', text: 'Now bring a lone m onto an ε: m₂ onto ε₃.',
+      hint: 'Press the button below for an m pair m₁ — m₂ and an ε pair ε₃ — ε₄, then click the highlighted edges.',
+      setup: (M) => [...mPair(M, 1, 4), ...epsPair(M, 3, 2)], labels: [['m', 1, 4, 'm₁'], ['m', 3, 4, 'm₂'], ['eps', 3, 2, 'ε₃'], ['eps', 5, 2, 'ε₄']],
+      guide: (M) => [['X', M.h(3, 4)], ['X', M.h(3, 3)]],
+      placeLabel: 'Place the pairs for me', placed: 'An m pair m₁ — m₂ along the top, an ε pair ε₃ — ε₄ below.',
+      guideText: (k) => (k === 0 ? '<b>X</b> on the highlighted edge moves m₂ one square down.' : '<b>X</b> again: m₂ lands on the m part of ε₃.'),
+      lesson: 'Now the e part of ε₃ is left: m × ε = m × m × e = e. That is every fusion rule of the toric code. Each anyon fused with itself gives nothing, and any two of e, m, ε fuse to the third.',
       test: () => progress.mOnEps },
     { part: 'Statistics', id: 'spin', panel: 'wave', start: '00', text: 'Is ε a boson or a fermion? Turn one once around: walk its m once around its e, then close every string.',
       hint: 'Press the button below for a ready ε, then click the highlighted edges one by one.',
@@ -564,7 +582,7 @@ if (typeof document !== 'undefined') (function () {
   function start(key, size = L) {
     startKey = key; L = size; M = makeModel(L);
     document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
-    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.farEps = false; progress.guide = null; progress.eOnEps = false; progress.mOnEps = false;
+    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.fourEps = false; lastEps = null; progress.guide = null; progress.eOnEps = false; progress.mOnEps = false;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
     geometry(); resample(); render();
     log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
@@ -573,7 +591,8 @@ if (typeof document !== 'undefined') (function () {
   function placeGuide(m) {
     start(m.start); for (const [G, e] of m.setup(M)) M.act(S, G, e);
     const steps = m.guide(M), states = [M.copy(S)];
-    for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); M.act(s2, G, e); states.push(s2); }
+    let last = null;
+    for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); last = M.act(s2, G, e, last) || last; states.push(s2); }
     progress.guide = { id: m.id, steps, states }; setFusion(true); setTool(steps[0][0]);
     log(m.placed);
   }
@@ -657,6 +676,16 @@ if (typeof document !== 'undefined') (function () {
     const q = s * 0.3;
     for (const [i, j] of shown.m)
       el('rect', { x: X(i + 0.5) - q / 2, y: Y(j + 0.5) - q / 2, width: q, height: q, rx: 3, fill: col('--m-color'), stroke: ring, 'stroke-width': 2 });
+    const guided = guideAt() !== null && missions[cur].labels;
+    if (guided) for (const [kind, i, j, name] of missions[cur].labels) {
+      const here = kind === 'm' ? c.an.m : kind === 'e' ? c.an.e : c.fz.eps;
+      if (!here.some((q) => q[0] === i && q[1] === j)) continue;
+      const [x, y] = kind === 'm' ? [i + 0.5, j + 0.88] : [i - 0.3, j + 0.3];
+      const label = el('text', { x: X(x), y: Y(y), 'text-anchor': 'middle', 'dominant-baseline': 'middle', 'font-size': s * 0.27,
+        'font-family': '"Times New Roman", Georgia, serif', 'font-style': 'italic', fill: col('--text-primary') });
+      label.textContent = name[0];
+      el('tspan', { 'baseline-shift': 'sub', 'font-size': '70%', 'font-style': 'normal' }, label).textContent = '₀₁₂₃₄₅₆₇₈₉'.indexOf(name[1]);
+    }
     const gHit = el('g', {});
     for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
       const ln = line(cp, { stroke: 'transparent', 'stroke-width': s * 0.34, 'data-edge': e }, gHit);
@@ -850,7 +879,7 @@ if (typeof document !== 'undefined') (function () {
     if (!c.gs) progress.hadAnyons = true;
     if (c.fz.eps.length) progress.hadEps = true;
     if (missions[cur] && missions[cur].id === 'fuseE' && c.ne >= 4) progress.fourE = true;
-    if (missions[cur] && missions[cur].id === 'epsEps' && c.fz.eps.some((p, a) => c.fz.eps.some((q, b) => b > a && M.torusDist(p, q) >= 3))) progress.farEps = true;
+    if (missions[cur] && missions[cur].id === 'epsEps' && c.fz.eps.length >= 4) progress.fourEps = true;
     if (c.gs && startKey === '00') progress.visited.add(stateKey(c.now));
     const m = missions[cur];
     if (m && !progress[m.id] && m.test(c)) {
@@ -1100,7 +1129,9 @@ if (typeof document !== 'undefined') (function () {
   function applyEdge(e) {
     if (drag.done.has(e)) return;
     const before = M.anyons(S);
-    if (!M.act(S, tool, e)) { log('<b>Move ε</b>: click an edge that touches the vertex of an ε (the half orange, half blue disc).'); return; }
+    const moved = M.act(S, tool, e, lastEps);
+    if (tool === 'eps' && moved) lastEps = moved;
+    if (!moved) { log('<b>Move ε</b>: click an edge that touches the vertex of an ε (the half orange, half blue disc).'); return; }
     drag.done.add(e);
     const fz = M.fuse(before), id = missions[cur] && missions[cur].id, at = (list, [i, j]) => list.some((p) => p[0] === i && p[1] === j);
     const onEps = (meet, epsPart, lone) => meet.length === 2 && meet.filter((q) => at(epsPart, q)).length === 1 && meet.filter((q) => at(lone, q)).length === 1;
