@@ -11,6 +11,7 @@ Every state reached by Pauli gates from a ground state |L> has the form
 
 so it is stored by two bit strings and a phase, for any L. The start state |L> = sum_z c_z |z> lives in the
 4-dimensional ground space, with logical basis |z1 z2> = Xbar1^z1 Xbar2^z2 |psi0> and index z = 2 z1 + z2.
+The state stores c along with a, b and k.
 |psi0> is the equal superposition of all closed loops of |1> edges on the dual lattice; all Z loops are +1 on it.
 
 Logical operators (reference loops):
@@ -88,9 +89,13 @@ class Torus:
 
 @dataclass
 class PauliState:
-    """|psi> = i^k X^a Z^b |start>. Gates are applied on the left; the stabilizer violations are kept up to date."""
+    """|psi> = i^k X^a Z^b |start>. Gates are applied on the left; the stabilizer violations are kept up to date.
+
+    |start> = sum_z c_z |z> is a ground state with logical amplitudes c (index z = 2 z1 + z2).
+    """
 
     torus: Torus
+    c: np.ndarray = field(default=None)  # logical amplitudes of |start>
     a: np.ndarray = field(default=None)
     b: np.ndarray = field(default=None)
     k: int = 0
@@ -99,13 +104,23 @@ class PauliState:
 
     def __post_init__(self):
         n, s = self.torus.n_edges, self.torus.L**2
+        c = np.asarray([1, 0, 0, 0] if self.c is None else self.c, complex)
+        self.c = c / np.linalg.norm(c)
         self.a = np.zeros(n, np.uint8) if self.a is None else self.a
         self.b = np.zeros(n, np.uint8) if self.b is None else self.b
         self.e_flags = np.zeros(s, np.uint8) if self.e_flags is None else self.e_flags
         self.m_flags = np.zeros(s, np.uint8) if self.m_flags is None else self.m_flags
 
     def copy(self):
-        return PauliState(self.torus, self.a.copy(), self.b.copy(), self.k, self.e_flags.copy(), self.m_flags.copy())
+        return PauliState(self.torus, self.c, self.a.copy(), self.b.copy(), self.k, self.e_flags.copy(),
+                          self.m_flags.copy())
+
+    def __repr__(self):
+        phase = ["1", "i", "-1", "-i"][self.k]
+        x, z = np.flatnonzero(self.a).tolist(), np.flatnonzero(self.b).tolist()
+        c = np.round(self.c, 3)
+        c = c.real + 0.0 if not c.imag.any() else c
+        return f"PauliState(L={self.torus.L}: {phase} * X on {x} * Z on {z} |start>, start c = {c})"
 
     def apply(self, gate, e):
         """Left-multiply by X, Y or Z on edge e, keeping the form i^k X^a Z^b."""
@@ -154,19 +169,19 @@ class PauliState:
             "Z2": int(self.b[t.x_row(0)].sum() % 2),  # an e went around y
         }
 
-    def logical(self, c):
-        """The 4 logical amplitudes of |psi> for start coefficients c (valid only without anyons)."""
+    def logical(self):
+        """The 4 logical amplitudes of |psi> (valid only without anyons)."""
         if not self.in_ground_space:
             raise ValueError("anyons present: |psi> has no ground-space component")
         w = self.windings()
         z = np.arange(4)
-        d = np.asarray(c, complex) * (-1.0) ** (w["Z1"] * (z >> 1) + w["Z2"] * (z & 1))  # Zbar first
+        d = self.c * (-1.0) ** (w["Z1"] * (z >> 1) + w["Z2"] * (z & 1))  # Zbar first
         d = d[z ^ (2 * w["X1"]) ^ w["X2"]]  # then Xbar
         return 1j**self.k * d
 
-    def loop_expectation(self, kind, index, c):
-        """<psi| loop |psi> for kind in 'Zx', 'Xx', 'Zy', 'Xy' on row or column `index`, start coefficients c."""
-        t, c = self.torus, np.asarray(c, complex)
+    def loop_expectation(self, kind, index):
+        """<psi| loop |psi> for kind in 'Zx', 'Xx', 'Zy', 'Xy' on row or column `index`."""
+        t, c = self.torus, self.c
         edges = {"Zx": t.z_row, "Xx": t.x_row, "Zy": t.z_col, "Xy": t.x_col}[kind](index)
         crossed = int((self.a if kind[0] == "Z" else self.b)[edges].sum() % 2)  # opposite-type strings it crosses
         p = np.abs(c) ** 2
@@ -179,18 +194,18 @@ class PauliState:
         return (-1) ** crossed * logical
 
     # ---- the wavefunction in the Z basis
-    def amplitude(self, base, z, c):
+    def amplitude(self, base, z):
         """<config|psi> for config = base xor a, where base is a closed-loop picture of sector z.
 
         Every picture has the same size 2^{-(L^2 - 1)/2}; this returns the amplitude in that unit.
         """
         sign = (-1) ** int(self.b[np.asarray(base, bool)].sum() % 2)
-        return 1j**self.k * c[z] * sign
+        return 1j**self.k * self.c[z] * sign
 
-    def sample_picture(self, c, rng):
+    def sample_picture(self, rng):
         """A random Z-basis configuration of |psi> and its amplitude (in units of 2^{-(L^2-1)/2})."""
-        t, c = self.torus, np.asarray(c, complex)
-        p = np.abs(c) ** 2
+        t = self.torus
+        p = np.abs(self.c) ** 2
         z = int(rng.choice(4, p=p / p.sum()))
         base = np.zeros(t.n_edges, np.uint8)
         for s in np.flatnonzero(rng.random(t.L**2) < 0.5):
@@ -199,11 +214,7 @@ class PauliState:
             base[t.x_col(0)] ^= 1
         if z & 1:
             base[t.x_row(0)] ^= 1
-        return base, base ^ self.a, z, self.amplitude(base, z, c)
-
-
-def new_state(L):
-    return PauliState(Torus(L))
+        return base, base ^ self.a, z, self.amplitude(base, z)
 
 
 START_STATES = {
@@ -212,3 +223,8 @@ START_STATES = {
     "++": np.full(4, 0.5),
     "phi+": np.array([1, 0, 0, 1]) / np.sqrt(2),
 }
+
+
+def new_state(L, start="00"):
+    """A ground state of the L x L torus: start is a name in START_STATES or 4 logical amplitudes c."""
+    return PauliState(Torus(L), START_STATES[start] if isinstance(start, str) else start)

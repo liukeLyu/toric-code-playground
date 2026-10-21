@@ -16,7 +16,7 @@ def random_start(rng):
 
 def run(seq, c):
     """Apply a gate sequence both ways: Pauli bookkeeping and exact state vector."""
-    s, psi = toric.new_state(L), EX.state(c)
+    s, psi = toric.new_state(L, c), EX.state(c)
     for gate, e in seq:
         s.apply(gate, e)
         psi = EX.apply(gate, e, psi)
@@ -48,7 +48,7 @@ def test_energy_anyons_and_amplitudes_match_exact(seed):
     assert np.array_equal(s.e_flags, (stars < 0).astype(np.uint8))
     assert np.array_equal(s.m_flags, (plaqs < 0).astype(np.uint8))
     for _ in range(5):  # sampled Z-basis pictures carry the exact amplitude
-        _, config, _, amp = s.sample_picture(c, rng)
+        _, config, _, amp = s.sample_picture(rng)
         assert EX.amplitude(config, psi) == pytest.approx(amp * 2 ** (-(L * L - 1) / 2))
 
 
@@ -60,7 +60,7 @@ def test_loop_expectations_match_exact(seed):
     t = EX.torus
     for kind, edges in [("Zx", t.z_row), ("Xx", t.x_row), ("Zy", t.z_col), ("Xy", t.x_col)]:
         for r in range(L):
-            assert s.loop_expectation(kind, r, c) == pytest.approx(EX.expectation(kind[0], edges(r), psi), abs=1e-12)
+            assert s.loop_expectation(kind, r) == pytest.approx(EX.expectation(kind[0], edges(r), psi), abs=1e-12)
 
 
 @pytest.mark.parametrize("seed", range(6))
@@ -69,7 +69,7 @@ def test_logical_state_and_net_gate_match_exact(seed):
     c = random_start(rng)
     s, psi = run(closed_sequence(rng), c)
     assert s.in_ground_space
-    assert np.allclose(EX.logical_amplitudes(psi), s.logical(c))
+    assert np.allclose(EX.logical_amplitudes(psi), s.logical())
     # the net gate i^k Xbar^w Zbar^u reproduces the state
     w, t, ref = s.windings(), EX.torus, EX.state(c)
     if w["Z1"]:
@@ -88,7 +88,7 @@ def test_braid_gives_minus_one():
     s.apply("X", t.h(1, 1))  # m pair
     s.apply_string("Z", t.plaquette(1, 1))  # an e loop around one m
     s.apply("X", t.h(1, 1))  # annihilate the m pair
-    assert s.in_ground_space and np.allclose(s.logical([1, 0, 0, 0]), [-1, 0, 0, 0])
+    assert s.in_ground_space and np.allclose(s.logical(), [-1, 0, 0, 0])
 
 
 def test_ground_space_is_four_dimensional_and_loops_label_it():
