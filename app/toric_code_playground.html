@@ -480,7 +480,7 @@ if (typeof document !== 'undefined') (function () {
     { id: 'inspectM', panel: 'wave', start: '00', text: 'Inspect an m.', hint: 'Choose Inspect, then click a blue square.',
       lesson: 'In every picture an odd number of |1⟩ edges touch this square: a loop ends here, B<sub>p</sub> = −1. Unlike e, an m is visible in each picture.',
       test: () => inspect && inspect.type === 'p' && inspect.hasAnyon },
-    { id: 'braid', panel: null, start: '00', text: 'Braid: take an e around an m, then annihilate everything.', hint: 'Make an m pair, then an e pair, walk one e around one m, close all strings.',
+    { id: 'braid', panel: null, start: '00' fresh: true, text: 'Braid: take an e around an m, then annihilate everything.', hint: 'Make an m pair, then an e pair, walk one e around one m, close all strings.',
       lesson: '|ψ⟩ = −|00⟩: back to the start state, but with a minus sign. The Z loop crossed the m’s X string once, and ZX = −XZ. That −1 is the e–m braiding phase.',
       test: (c) => c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
     { part: 'Fusion', id: 'fuseE', panel: 'wave', start: '00', text: 'Fuse e’s from two different pairs: bring e₂ onto e₃.',
@@ -539,21 +539,21 @@ if (typeof document !== 'undefined') (function () {
       guideText: (k) => `<b>Move ε</b> on the highlighted edge: ${SWAP_STEPS[k].replace(/P/g, 'ε')}`,
       lesson: 'ε₁ and ε₂ have swapped places, and the board is exactly as it was: the same anyons, the same strings. But |ψ⟩ now has a minus sign in front. Swapping two ε’s multiplied the state by −1: ε is a fermion. The sign comes from the e–m braid. Each ε carries an e and an m, and during the swap the e of each ε went half way around the m of the other. Together that is one full e–m braid, and its −1 is the one from the braid mission.',
       test: () => guideDone('swapEps') },
-    { part: 'Computing with anyons', id: 'xgate', panel: 'loops', start: '00', text: 'Flip qubit 1: drag an m around the torus along y.',
+    { part: 'Computing with anyons', id: 'xgate', panel: 'loops', start: '00' fresh: true, text: 'Flip qubit 1: drag an m around the torus along y.',
       hint: 'X on the horizontal edges of one column, bottom to top. Drag to do it in one stroke.',
       lesson: '|00⟩ → |10⟩. Energy 0, but a different ground state: the Z loop along x now reads −1. That closed X loop is the logical gate <span class="ob">X</span>₁.',
       test: (c) => c.gs && c.wind.mY },
-    { id: 'basis', panel: 'loops', start: '00', text: 'From |00⟩, prepare all four basis states.', hint: 'Combine m loops along y (<span class="ob">X</span>₁) and along x (<span class="ob">X</span>₂).',
+    { id: 'basis', panel: 'loops', start: '00' fresh: true, text: 'From |00⟩, prepare all four basis states.', hint: 'Combine m loops along y (<span class="ob">X</span>₁) and along x (<span class="ob">X</span>₂).',
       lesson: 'Four orthogonal ground states with the same energy: two qubits. No local measurement tells them apart; only loops around the torus do.',
       test: () => progress.visited.size >= 4 },
-    { id: 'zgate', panel: 'loops', start: '+0', text: 'Phase gate: from |+0⟩, drag an e around the torus along x.', hint: 'Z on the horizontal edges of one row.',
+    { id: 'zgate', panel: 'loops', start: '+0' fresh: true, text: 'Phase gate: from |+0⟩, drag an e around the torus along x.', hint: 'Z on the horizontal edges of one row.',
       lesson: '|+0⟩ → |−0⟩: the |10⟩ part got −1, the |00⟩ part did not. In |10⟩ an m flux threads the torus, and the e encircled it: the e–m braid again. A logical gate is a braid around the flux in the hole.',
       test: (c) => startKey === '+0' && c.gs && c.wind.eX },
-    { id: 'protect', panel: 'loops', start: '+0', text: 'Protection: from |+0⟩, make a few anyon pairs with short strings, then close each string locally.',
+    { id: 'protect', panel: 'loops', start: '+0' fresh: true, text: 'Protection: from |+0⟩, make a few anyon pairs with short strings, then close each string locally.',
       hint: 'Any short Z or X strings, closed again without wrapping the torus.',
       lesson: '|ψ⟩ = |+0⟩ again: local errors that are undone locally leave the qubits untouched. Even the + sign between |00⟩ and |10⟩ survives, because no local operator can tell those two states apart, so none can disturb the sign between them. Only a string that wraps the torus, at least L edges, changes them. That is a logical error.',
       test: (c) => startKey === '+0' && c.gs && progress.hadAnyons && Math.abs(c.ov[0] - 1) < 1e-9 && c.zCount + S.a.reduce((t, x) => t + x, 0) > 0 },
-    { part: 'Heat', id: 'heat', panel: 'heat', text: 'Switch on the heat bath at T = 0.6 and watch the energy.', hint: '▶ Heat bath, below.',
+    { part: 'Heat', id: 'heat', panel: 'heat' fresh: true, text: 'Switch on the heat bath at T = 0.6 and watch the energy.', hint: '▶ Heat bath, below.',
       lesson: 'Pairs pop up at rate ∝ e<sup>−4/T</sup>, wander, and sometimes annihilate. The energy fluctuates around a thermal value instead of staying at 0.',
       test: () => heat.t >= 20 },
     { id: 'decodeNow', panel: 'heat', text: 'While anyons are out, press Decode now.', hint: 'Decode is one round of error correction: it joins each anyon to its closest partner by a shortest string. Pause the bath if it helps.',
@@ -866,7 +866,7 @@ if (typeof document !== 'undefined') (function () {
     const fresh = heat.t === 0 && !S.a.some((x) => x) && !S.b.some((x) => x);
     setup.innerHTML = free ? '' : m.guide && !progress[m.id] && guideAt() === null ? `<button class="place">${m.placeLabel}</button>`
       : m.start && m.start !== startKey ? `<button>Start from |${STARTS[m.start][0]}⟩</button>`
-      : m.fresh && !fresh ? '<button>Start with a fresh board</button>' : '';
+      : m.fresh && !fresh && !progress[m.id] ? '<button>Start with a fresh board</button>' : '';
     if (setup.querySelector('.place')) setup.firstChild.addEventListener('click', () => placeGuide(m));
     else if (setup.firstChild) setup.firstChild.addEventListener('click', () => { start(m.start || startKey); log('A fresh board: no anyons, no strings, time 0.'); });
     document.getElementById('free').hidden = !free;
