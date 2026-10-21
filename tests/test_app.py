@@ -57,3 +57,55 @@ def test_app_model_matches_python(seed):
         assert (w["X1"], w["X2"], w["Z1"], w["Z2"]) == (js["mY"], js["mX"], js["eX"], js["eY"])
         d = toric.decode(s.copy())  # same greedy decoder, same tie-breaking
         assert np.array_equal(d.a, case["da"]) and np.array_equal(d.b, case["db"])
+
+
+FUSE_DRIVER = r"""
+const rng = makeRng(%(seed)d), out = [];
+for (const L of [3, 4, 6]) {
+  const M = makeModel(L);
+  for (let t = 0; t < 20; t++) {
+    const s = M.fresh();
+    for (let g = 0; g < 8; g++) M.apply(s, 'XYZ'[Math.floor(rng() * 3)], Math.floor(rng() * M.nEdges));
+    const an = M.anyons(s);
+    out.push({ L, e: an.e, m: an.m, fz: M.fuse(an) });
+  }
+}
+// the spin mission: an e at (2, 2) on a 6 x 6 torus, its m walked once through the 4 squares around it
+const M = makeModel(6), s = M.fresh(), ops = [['Z', M.h(2, 2)], ['X', M.h(1, 4)], ['X', M.h(1, 3)]];
+const spin = [['X', M.h(1, 2)], ['X', M.v(2, 1)], ['X', M.h(2, 2)], ['X', M.v(2, 2)]];
+const close = [['X', M.h(1, 3)], ['X', M.h(1, 4)], ['Z', M.h(2, 2)]];
+const around = [];
+for (const [G, e] of ops) M.apply(s, G, e);
+for (const [G, e] of spin) {
+  around.push(M.fuse(M.anyons(s)).eps.find(([i, j]) => i === 2 && j === 2)); M.apply(s, G, e);
+}
+for (const [G, e] of close) M.apply(s, G, e);
+console.log(JSON.stringify({ out, around, k: s.k, a: [...s.a], b: [...s.b], star: M.star(2, 2) }));
+"""
+
+
+def run_fuse_js(seed):
+    html = APP.read_text()
+    model = re.search(r"// MODEL-BEGIN.*?// MODEL-END", html, re.S).group(0)
+    code = model + "\n" + FUSE_DRIVER % {"seed": seed}
+    return json.loads(subprocess.run(["node", "-e", code], capture_output=True, text=True, check=True).stdout)
+
+
+def test_fusion_view_pairs_neighbours():
+    res = run_fuse_js(3)
+    for case in res["out"]:
+        L, fz = case["L"], case["fz"]
+        for i, j, pi, pj in fz["eps"]:  # each ε is an e and an m on one of the 4 squares at its vertex
+            assert (pi - i) % L in (0, L - 1) and (pj - j) % L in (0, L - 1)
+        assert sorted(fz["e"] + [p[:2] for p in fz["eps"]]) == sorted(case["e"])  # every anyon is drawn exactly once
+        assert sorted(fz["m"] + [p[2:] for p in fz["eps"]]) == sorted(case["m"])
+        for i, j in fz["e"]:  # no unpaired e is left next to an unpaired m
+            assert not any((a - i) % L in (0, L - 1) and (b - j) % L in (0, L - 1) for a, b in fz["m"])
+
+
+def test_full_turn_of_epsilon_gives_minus_one():
+    res = run_fuse_js(3)
+    squares = [tuple(p[2:]) for p in res["around"]]  # the m visits all 4 squares while staying bound to the e
+    assert squares == [(1, 2), (1, 1), (2, 1), (2, 2)]
+    # what is left is X on the star of the e, which is A_v = +1 on the ground state, times i^2 = -1
+    assert {e for e, x in enumerate(res["a"]) if x} == set(res["star"]) and not any(res["b"]) and res["k"] == 2

@@ -69,6 +69,8 @@ button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--acce
 .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: 0; }
 .swatch.e { background: var(--e-color); border-radius: 50%; }
 .swatch.m { background: var(--m-color); }
+.swatch.eps { border-radius: 50%; background: linear-gradient(135deg, var(--e-color) 50%, var(--m-color) 50%); }
+#fuseBtn[aria-pressed="true"] { border-color: var(--text-primary); border-width: 2px; padding: 6px 13px; font-weight: 600; }
 .swatch.c { background: var(--config); height: 3px; vertical-align: 3px; width: 14px; }
 .log { font-size: 15px; color: var(--text-primary); min-height: 1.55em; margin-top: 12px; }
 .log b { color: var(--text-primary); }
@@ -147,6 +149,7 @@ svg#torus.turning { cursor: grabbing; }
         <button class="tool" data-tool="Z" aria-pressed="true" title="Key 1"><span class="swatch e"></span>Z</button>
         <button class="tool" data-tool="X" aria-pressed="false" title="Key 2"><span class="swatch m"></span>X</button>
         <button class="tool" data-tool="inspect" aria-pressed="false" title="Key 3">Inspect</button>
+        <button id="fuseBtn" aria-pressed="false" title="Key 4: draw an e next to an m as one ε"><span class="swatch eps"></span>Fusion view</button>
         <span class="gap"></span>
         <button id="undo" title="Ctrl/Cmd+Z">Undo</button>
         <button id="reset">Reset</button>
@@ -354,8 +357,18 @@ function makeModel(L) {
   }
   function decode(s) { const an = anyons(s); for (const [p, q] of greedyPairs(an.e)) joinE(s, p, q); for (const [p, q] of greedyPairs(an.m)) joinM(s, p, q); }
   const decoded = (s) => { const d = copy(s); decode(d); return d; };
+  // fusion view: give each e a free m on one of the 4 squares at its vertex, in a fixed order; each such pair is one ε.
+  // Which e gets which m is a drawing choice; only the total charge of a cluster is physical.
+  function fuse(an) {
+    const free = new Set(an.m.map(([i, j]) => `${i},${j}`)), eps = [], e = [];
+    for (const [i, j] of an.e) {
+      const p = [[i, j], [mod(i - 1), j], [mod(i - 1), mod(j - 1)], [i, mod(j - 1)]].find(([a, b]) => free.has(`${a},${b}`));
+      if (p) { free.delete(`${p[0]},${p[1]}`); eps.push([i, j, p[0], p[1]]); } else e.push([i, j]);
+    }
+    return { eps, e, m: an.m.filter(([i, j]) => free.has(`${i},${j}`)) };
+  }
   const windings = (s) => ({ mY: parity(s.a, Z1), mX: parity(s.a, Z2), eX: parity(s.b, X1), eY: parity(s.b, X2) });
-  return { L, nEdges, h, v, star, plaq, edgeInfo, ends, fresh, copy, apply, anyons, energy, logical,
+  return { L, nEdges, h, v, star, plaq, edgeInfo, ends, fresh, copy, apply, anyons, fuse, energy, logical,
            loopValues, logicalExpect, logicalCorr, sample, deltaE, thermalSweep, decode, decoded, flipStar, probe, torusDist, windings, zRow, xRow, zCol, xCol };
 }
 // mulberry32: small seeded PRNG with good low bits (a plain LCG biases the noise)
@@ -397,7 +410,7 @@ if (typeof document !== 'undefined') (function () {
     'phi+': ['Φ<sup>+</sup>', START_STATES.phip] };
   const VIEWS = { wave: 'Pictures', loops: 'Loops', heat: 'Heat' };
   const CORR = [[0, 'off'], [1, 'every sweep'], [10, 'every 10']];
-  let M, S, C0, startKey = '00', history, tool = 'Z', drag = null, highlight = null, inspect = null, samples = [];
+  let M, S, C0, startKey = '00', history, tool = 'Z', fusion = false, drag = null, highlight = null, inspect = null, samples = [];
   let progress = {}, cur = 0, lessonOf = null, view = 'wave', corrEvery = 0;
   const rand = makeRng(12345);
 
@@ -421,6 +434,18 @@ if (typeof document !== 'undefined') (function () {
     { id: 'braid', panel: null, start: '00', text: 'Braid: take an e around an m, then annihilate everything.', hint: 'Make an m pair, then an e pair, walk one e around one m, close all strings.',
       lesson: '|ψ⟩ = −|00⟩: back to the start state, but with a minus sign. The Z loop crossed the m’s X string once, and ZX = −XZ. That −1 is the e–m braiding phase.',
       test: (c) => c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
+    { part: 'Fusion', id: 'fuseE', panel: 'wave', start: '00', text: 'Make two separate e pairs, then bring an e of one pair onto an e of the other.',
+      hint: 'Two Z clicks far apart, then extend one string until its end reaches an e of the other string.',
+      lesson: 'Energy +8 → +4: two e’s that meet vanish, whichever pairs they came from, leaving one string with an e at each end. Two e’s fuse to nothing: e × e = 1. With X the same holds for m: m × m = 1.',
+      test: (c) => progress.fourE && c.ne === 2 && c.nm === 0 },
+    { id: 'fuseEM', panel: 'wave', start: '00', text: 'Now put an e next to an m, and switch on Fusion view.',
+      hint: 'Z and then X on the same edge makes an e pair and an m pair around it. Fusion view is below the board (key 4).',
+      lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z on one of its edges moves the e part, an X the m part. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
+      test: (c) => fusion && c.fz.eps.length > 0 },
+    { id: 'spin', panel: 'wave', start: '00', text: 'Turn an ε once around: keep its e still, walk its m through the 4 squares around it, then close every string.',
+      hint: 'Make an e pair and an m pair apart from each other. Bring one m next to one e, step it once around that e with X on the edges at the e’s vertex, then annihilate everything.',
+      lesson: '|ψ⟩ = −|00⟩. A full turn of ε multiplied the state by −1: this is the e–m braiding phase again, now a property of a single particle. A boson turned by 360° gets no sign. For anyons the phase from swapping two identical particles equals the phase from one full turn, so two ε’s that swap places also pick up −1: e and m are bosons, but their bound state ε is a fermion.',
+      test: (c) => progress.hadEps && c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
     { part: 'Computing with anyons', id: 'xgate', panel: 'loops', start: '00', text: 'Flip qubit 1: drag an m around the torus along y.',
       hint: 'X on the horizontal edges of one column, bottom to top. Drag to do it in one stroke.',
       lesson: '|00⟩ → |10⟩. Energy 0, but a different ground state: the Z loop along x now reads −1. That closed X loop is the logical gate <span class="ob">X</span>₁.',
@@ -462,7 +487,7 @@ if (typeof document !== 'undefined') (function () {
   function start(key, size = L) {
     startKey = key; L = size; M = makeModel(L);
     document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
-    progress.visited = new Set(); progress.hadAnyons = false;
+    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
     geometry(); resample(); render();
     log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
@@ -475,7 +500,7 @@ if (typeof document !== 'undefined') (function () {
     const an = M.anyons(S), ne = an.e.length, nm = an.m.length, gs = ne + nm === 0;
     const now = gs ? M.logical(S, C0) : null;
     const ov = gs ? now.reduce((t, z, i) => cx.add(t, cx.mul(cx.conj(C0[i]), z)), [0, 0]) : [0, 0];
-    return { an, ne, nm, gs, now, ov, en: M.energy(S), wind: M.windings(S), zCount: S.b.reduce((a, x) => a + x, 0) };
+    return { an, fz: M.fuse(an), ne, nm, gs, now, ov, en: M.energy(S), wind: M.windings(S), zCount: S.b.reduce((a, x) => a + x, 0) };
   }
 
   // ---------- board
@@ -488,6 +513,11 @@ if (typeof document !== 'undefined') (function () {
   const dualSeg = ([x1, y1, x2, y2]) => { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; return y1 === y2 ? [mx, my - 0.5, mx, my + 0.5] : [mx - 0.5, my, mx + 0.5, my]; };
   function siteCopies(i, j) { const out = [[i, j, false]];
     if (i === 0) out.push([L, j, true]); if (j === 0) out.push([i, L, true]); if (i === 0 && j === 0) out.push([L, L, true]); return out; }
+  // an ε sits halfway between its vertex and its square: [x, y, angle from the e towards the m]
+  const epsSpots = (fz) => fz.eps.map(([i, j, pi, pj]) => {
+    const dx = pi === i ? 0.5 : -0.5, dy = pj === j ? 0.5 : -0.5, w = (x) => ((x % L) + L) % L;
+    return [w(i + dx / 2), w(j + dy / 2), Math.atan2(dy, dx)];
+  });
   const edgeName = (e) => { const { i, j, horizontal } = M.edgeInfo(e); return `edge ${e} = ${horizontal ? 'h' : 'v'}(${i}, ${j})`; };
 
   function render() {
@@ -521,11 +551,15 @@ if (typeof document !== 'undefined') (function () {
       const at = inspect.type === 'v' ? [X(inspect.i), Y(inspect.j)] : [X(inspect.i + 0.5), Y(inspect.j + 0.5)];
       el('circle', { cx: at[0], cy: at[1], r: s * 0.33, fill: 'none', stroke: col('--accent'), 'stroke-width': 3 });
     }
-    const ring = col('--surface-1');
-    for (const [i, j] of c.an.e) for (const [a, b, ghost] of siteCopies(i, j))
+    const ring = col('--surface-1'), shown = fusion ? c.fz : c.an;
+    for (const [i, j] of shown.e) for (const [a, b, ghost] of siteCopies(i, j))
       el('circle', { cx: X(a), cy: Y(b), r: s * 0.17, fill: col('--e-color'), stroke: ring, 'stroke-width': 2, opacity: ghost ? 0.45 : 1 });
+    if (fusion) for (const [x, y, a] of epsSpots(c.fz)) for (const [half, color] of [[a, '--m-color'], [a + Math.PI, '--e-color']]) {
+      const pts = Array.from({ length: 9 }, (_, n) => { const t = half - Math.PI / 2 + n * Math.PI / 8; return `${X(x + 0.22 * Math.cos(t))},${Y(y + 0.22 * Math.sin(t))}`; });
+      el('polygon', { points: pts.join(' '), fill: col(color), stroke: ring, 'stroke-width': 2 });
+    }
     const q = s * 0.3;
-    for (const [i, j] of c.an.m)
+    for (const [i, j] of shown.m)
       el('rect', { x: X(i + 0.5) - q / 2, y: Y(j + 0.5) - q / 2, width: q, height: q, rx: 3, fill: col('--m-color'), stroke: ring, 'stroke-width': 2 });
     const gHit = el('g', {});
     for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
@@ -595,9 +629,11 @@ if (typeof document !== 'undefined') (function () {
       out.push([key(mid), s]); ghost.push(s);
     };
     const circle = Array.from({ length: 12 }, (_, n) => [Math.cos(n * Math.PI / 6), Math.sin(n * Math.PI / 6)]);
-    const an = M.anyons(S);
-    for (const [i, j] of an.e) patch(circle, i, j, col('--e-color'));
-    for (const [i, j] of an.m) patch([[-0.9, -0.9], [0.9, -0.9], [0.9, 0.9], [-0.9, 0.9]], i + 0.5, j + 0.5, col('--m-color'));
+    const an = M.anyons(S), fz = M.fuse(an), shown = fusion ? fz : an;
+    for (const [i, j] of shown.e) patch(circle, i, j, col('--e-color'));
+    if (fusion) for (const [x, y, a] of epsSpots(fz)) for (const [half, color] of [[a, '--m-color'], [a + Math.PI, '--e-color']])
+      patch(Array.from({ length: 9 }, (_, n) => { const t = half - Math.PI / 2 + n * Math.PI / 8; return [1.1 * Math.cos(t), 1.1 * Math.sin(t)]; }), x, y, col(color));
+    for (const [i, j] of shown.m) patch([[-0.9, -0.9], [0.9, -0.9], [0.9, 0.9], [-0.9, 0.9]], i + 0.5, j + 0.5, col('--m-color'));
     out.sort((a, b) => a[0] - b[0]);
     tor.svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     // strings and anyons once more, faintly on top, so that the parts behind the surface still show through
@@ -640,11 +676,15 @@ if (typeof document !== 'undefined') (function () {
     if (on.length > 6) return `<i>${name}</i><sub>(${on.length} edges)</sub>`;
     return on.map((e) => `<i>${name}</i><sub>${e}</sub>`).join('');
   }
+  function anyonList(c) {
+    const n = fusion ? [[c.fz.e.length, 'e'], [c.fz.m.length, 'm'], [c.fz.eps.length, 'ε']] : [[c.ne, 'e'], [c.nm, 'm']];
+    return n.filter(([k]) => k).map(([k, name]) => `${k} ${name}`).join(', ');
+  }
   function stateLine(c) {
     const ph = fmtC(cx.ipow(S.k)), ops = [paulis('X', S.a), paulis('Z', S.b)].filter(Boolean).join(' ');
     document.getElementById('dMicro').innerHTML = `|ψ⟩ = ${ph === '1' ? '' : ph === '−1' ? '−' : ph + ' '}${ops ? ops + ' ' : ''}|${STARTS[startKey][0]}⟩`;
     document.getElementById('dLogical').innerHTML = c.gs ? `two qubits: <b>${ketString(c.now)}</b>`
-      : `${c.ne ? `${c.ne} e` : ''}${c.ne && c.nm ? ', ' : ''}${c.nm ? `${c.nm} m` : ''} out: the two qubits have no value until the anyons are gone`;
+      : `${anyonList(c)} out: the two qubits have no value until the anyons are gone`;
     const dE = c.en.E - c.en.E0;
     document.getElementById('cE').textContent = dE ? `+${dE}` : '0';
   }
@@ -693,7 +733,7 @@ if (typeof document !== 'undefined') (function () {
     Object.assign(heat, { failedPassive: false, activeSweeps: 0 });
     cur = 0; lessonOf = null; view = 'wave'; corrEvery = 0;
     for (const id of ['xPlot', 'xTable', 'xNote', 'xProg']) document.getElementById(id).innerHTML = '';
-    start('00', MISSION_L); setTool('Z');
+    start('00', MISSION_L); setFusion(false); setTool('Z');
   }
   function segment(id, options, value, onPick) {
     const box = document.getElementById(id);
@@ -702,6 +742,8 @@ if (typeof document !== 'undefined') (function () {
   }
   function update(c) {
     if (!c.gs) progress.hadAnyons = true;
+    if (c.fz.eps.length) progress.hadEps = true;
+    if (missions[cur] && missions[cur].id === 'fuseE' && c.ne >= 4) progress.fourE = true;
     if (c.gs && startKey === '00') progress.visited.add(stateKey(c.now));
     const m = missions[cur];
     if (m && !progress[m.id] && m.test(c)) {
@@ -987,6 +1029,8 @@ if (typeof document !== 'undefined') (function () {
     render();
   }
   document.querySelectorAll('button.tool').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  function setFusion(on) { fusion = on; document.getElementById('fuseBtn').setAttribute('aria-pressed', String(on)); render(); }
+  document.getElementById('fuseBtn').addEventListener('click', () => setFusion(!fusion));
   function undo() { if (!history.length) return; S = history.pop(); resample(); log('Undone.'); render(); }
   document.getElementById('undo').addEventListener('click', undo);
   document.getElementById('reset').addEventListener('click', () => { start(startKey); log('Reset to the start state.'); });
@@ -996,6 +1040,7 @@ if (typeof document !== 'undefined') (function () {
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
     const map = { 1: 'Z', 2: 'X', 3: 'inspect' };
     if (map[e.key]) setTool(map[e.key]);
+    if (e.key === '4') setFusion(!fusion);
     if (e.key === 'Escape') { inspect = null; render(); }
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
