@@ -1,9 +1,9 @@
-"""Full-size runs behind the notebook figures, saved as small JSON summaries in results/.
+"""Full-size runs behind the notebook figure and the README numbers, saved as small JSON summaries in results/.
 
     python scripts/make_results.py                     # every result, spread over all CPU cores
     python scripts/make_results.py memory_lifetimes
 
-Each notebook runs a seconds-long live version of a result, then loads the full one from results/.
+The notebook runs a seconds-long live version of memory_lifetimes, then loads the full one from results/.
 Every task has its own seed, so the files are reproducible. About 5 minutes in total on 4 cores.
 """
 
@@ -59,23 +59,23 @@ INTERVALS = [1, 2, 3, 5, 10, 20, None]
 
 # Each result: (list of tasks, function assembling the task outputs into a JSON-ready dict).
 RESULTS_SPEC = {
-    # notebook 03: time to the first logical error, without correction and with correction after every sweep
+    # notebook and README: time to the first logical error, without correction and with correction after every sweep
     "memory_lifetimes": (
         [(lifetimes, L, T, c, RUNS, MAX, 1000 * k + 10 * L + bool(c))
          for k, T in enumerate(TEMPS) for L in SIZES for c in (None, 1)],
         lambda out: {"runs": RUNS, "max_sweeps": MAX, "points": out},
     ),
-    # notebook 03: how often to correct: lifetime against the correction interval N, at T = 0.6
+    # README: how often to correct: lifetime against the correction interval N, at T = 0.6
     "correction_interval": (
         [(lifetimes, L, 0.6, n, RUNS, MAX, 50000 + 100 * L + (n or 0)) for L in (6, 10) for n in INTERVALS],
         lambda out: {"T": 0.6, "runs": RUNS, "max_sweeps": MAX, "points": out},
     ),
-    # notebook 03: the fate of one pair at T -> 0 on a 20 x 20 torus
+    # README: the fate of one pair at T -> 0 on a 20 x 20 torus
     "single_pair": (
         [(single_pairs, 20, 5000, seed) for seed in range(4)],
         assemble_pairs,
     ),
-    # notebook 03: fraction of stabilizers at -1 in equilibrium, against the Gibbs value
+    # README: fraction of stabilizers at -1 in equilibrium, against the Gibbs value
     "equilibrium": (
         [(equilibrium, 10, T, 3000, 500, 7) for T in [0.5, 0.6, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0]],
         lambda out: {"L": 10, "sweeps": 3000, "burn_in": 500, "points": out},
