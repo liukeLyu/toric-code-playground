@@ -1,5 +1,7 @@
 # toric-code-playground
 
+[![The toric code playground: an e pair joined by a Z string and an m pair joined by an X string on a 6 x 6 torus, with three sampled loop pictures of the state](app/screenshot.png)](https://liukelyu.github.io/toric-code-playground/)
+
 *Why I built this.* Topological order, anyons, braiding: I have learned these words many times, but they never truely clicked, I did not have enough intuition for them. I built this mini project to get that intuition myself, by applying gates by hand and watching what they do to the state.
 
 The toric code from scratch, on an $L \times L$ torus with one qubit per edge, $H = -\sum_v A_v - \sum_p B_p$ with $A_v = \prod_{e \ni v} X_e$ and $B_p = \prod_{e \in p} Z_e$. Every state is tracked exactly as a Pauli string acting on a ground state, and checked against brute-force 18-qubit state vectors and the exact Gibbs state.
