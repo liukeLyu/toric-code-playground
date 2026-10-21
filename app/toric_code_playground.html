@@ -72,6 +72,8 @@ button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--acce
 .swatch.eps { border-radius: 50%; background: linear-gradient(135deg, var(--e-color) 50%, var(--m-color) 50%); }
 #fuseBtn[aria-pressed="true"] { border-color: var(--text-primary); border-width: 2px; padding: 6px 13px; font-weight: 600; }
 .swatch.c { background: var(--config); height: 3px; vertical-align: 3px; width: 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
+.legend b { color: var(--text-primary); }
 .log { font-size: 15px; color: var(--text-primary); min-height: 1.55em; margin-top: 12px; }
 .log b { color: var(--text-primary); }
 .state { margin-top: 14px; padding: 14px 18px; background: var(--surface-1); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06);
@@ -158,6 +160,11 @@ svg#torus.turning { cursor: grabbing; }
         <span class="gap"></span>
         <button id="undo" title="Ctrl/Cmd+Z">Undo</button>
         <button id="reset">Reset</button>
+      </div>
+      <div class="legend">
+        <span><span class="swatch e"></span><b>e</b>: a vertex with A<sub>v</sub> = −1, at an end of a Z string</span>
+        <span><span class="swatch m"></span><b>m</b>: a square with B<sub>p</sub> = −1, at an end of an X string</span>
+        <span id="legendEps" hidden><span class="swatch eps"></span><b>ε</b> = e × m: an e and an m side by side</span>
       </div>
       <div class="log" id="log"></div>
       <div class="state">
@@ -1053,7 +1060,10 @@ if (typeof document !== 'undefined') (function () {
     render();
   }
   document.querySelectorAll('button.tool').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
-  function setFusion(on) { fusion = on; document.getElementById('fuseBtn').setAttribute('aria-pressed', String(on)); render(); }
+  function setFusion(on) {
+    fusion = on; document.getElementById('fuseBtn').setAttribute('aria-pressed', String(on));
+    document.getElementById('legendEps').hidden = !on; render();
+  }
   document.getElementById('fuseBtn').addEventListener('click', () => setFusion(!fusion));
   function undo() { if (!history.length) return; S = history.pop(); resample(); log('Undone.'); render(); }
   document.getElementById('undo').addEventListener('click', undo);
