@@ -1,10 +1,10 @@
 # toric-code-playground
 
-*Why I built this.* Topological order, anyons, braiding: I have learned these words many times, but they never clicked, and I did not have enough intuition for them. I built this mini project to get that intuition myself, by applying gates by hand and watching what they do to the state.
+*Why I built this.* Topological order, anyons, braiding: I have learned these words many times, but they never truely clicked, I did not have enough intuition for them. I built this mini project to get that intuition myself, by applying gates by hand and watching what they do to the state.
 
 The toric code from scratch, on an $L \times L$ torus with one qubit per edge, $H = -\sum_v A_v - \sum_p B_p$ with $A_v = \prod_{e \ni v} X_e$ and $B_p = \prod_{e \in p} Z_e$. Every state is tracked exactly as a Pauli string acting on a ground state, and checked against brute-force 18-qubit state vectors and the exact Gibbs state.
 
-**[Play in your browser](https://liukelyu.github.io/toric-code-playground/)**: nothing to install. Click an edge to apply a gate and watch the anyons, the energy and the two stored qubits change. The same page works offline: open [`app/toric_code_playground.html`](app/toric_code_playground.html).
+**[Play in your browser](https://liukelyu.github.io/toric-code-playground/)**: nothing to install. Click an edge to apply a gate and watch the anyons, the energy and the two stored qubits change. Guided missions walk through the physics: the ground state as a loop soup, e and m anyons, braiding, logical gates, and a heat bath with a decoder. The same page works offline: open [`app/toric_code_playground.html`](app/toric_code_playground.html).
 
 **Quick start in Python.**
 
@@ -17,26 +17,17 @@ s.anyons(), s.energy()                 # -> ([(2, 2), (3, 2)], []), -68: two e a
 
 s = toric.new_state(6)
 s.apply_string("X", s.torus.x_col(2))  # drag an m anyon around the torus
-s.energy(), s.logical([1, 0, 0, 0])    # -> -72, |10>: same energy, a different ground state (a stored bit)
+s.energy(), s.logical()                # -> -72, |10>: same energy, a different ground state (a stored bit)
 ```
 
-The failure case is heat. Errors from a bath at $T = 0.6$ scramble that stored bit after about 20 sweeps on a $6 \times 6$ torus (`toric.memory_lifetime(6, 0.6, None, 2000, np.random.default_rng())`), and a bigger torus does not help. Only frequent error correction does: decoding after every sweep keeps it for about 200 sweeps, and the gain grows with $L$.
+Heat scrambles information. Errors from a bath at $T = 0.6$ scramble that stored bit after about 20 sweeps on a $6 \times 6$ torus (`toric.memory_lifetime(6, 0.6, None, 2000, np.random.default_rng())`), and a bigger torus does not help. Only frequent error correction does: decoding after every sweep keeps it for about 200 sweeps, and the gain grows with $L$.
 
-New to topological order? Start with [`00_start_here`](examples/00_start_here.ipynb): three moves on the torus (make a pair, store a bit, lose it to heat).
-
-| Step | What you learn | Notebook |
-|---|---|---|
-| 1 | Anyons in the wavefunction: the ground state as a loop soup, e as a sign twist, m as a loop end, braiding $= -1$ | [`01_anyons`](examples/01_anyons.ipynb) |
-| 2 | Two logical qubits: reading them with loops, gates as anyons going around the torus, what braiding cannot do | [`02_logical_qubits`](examples/02_logical_qubits.ipynb) |
-| 3 | Heat: thermal anyons, why a lone pair does not simply annihilate, how often you must correct | [`03_thermal_memory`](examples/03_thermal_memory.ipynb) |
-
-The app shows the same physics interactively: the microscopic and logical state after every click, the energy, the anyons, sample configurations of the wavefunction, loop measurements of the two qubits, a heat bath with a decoder, and guided missions.
+How the Python package computes all this: the [tour notebook](examples/tour.ipynb). A state is printed as its two strings and its phase, and the notebook shows each step as counting bits: anyons are string ends, logical gates are strings that wind around the torus, braiding is a sign in the phase, and heat and decoding add more bits to the strings.
 
 ## What you will see
 
 * An e anyon is a sign: two configurations that differ by flipping one star have amplitudes of opposite sign exactly at the e (checked on the 18-qubit state vector). An m anyon is the end of an open loop, visible in every configuration.
 * Taking an e around an m and annihilating everything returns the start state times exactly $-1$.
-* Gates built from anyons going around the torus are Pauli operators only: over all 16 of them, the concurrence of the two logical qubits stays exactly 0 from $|00\rangle$ or $|{+}0\rangle$ and exactly 1 from a Bell state.
 * In equilibrium the fraction of stabilizers at $-1$ follows the Gibbs value $1/(1 + e^{2/T})$ to within 0.003 for $T = 0.5$ to $3$ ($L = 10$).
 * A lone pair at $T \to 0$ ($L = 20$): 19% annihilate within one sweep, yet 60% drift $L/2$ apart at some point, because nothing pulls them back.
 * Memory lifetime at $T = 0.6$ (mean of 200 runs): without correction 11 to 35 sweeps for every $L$ from 4 to 14; decoding after every sweep, 127 sweeps at $L = 4$ and over 6500 at $L = 14$. Decoding only every 10 sweeps lasts about 20 sweeps, no better than not decoding at all.
