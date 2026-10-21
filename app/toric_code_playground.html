@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Toric code playground: anyons and the quantum state</title>
+<title>Toric code playground</title>
 <style>
 .viz-root {
   color-scheme: light;
@@ -38,275 +38,171 @@
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; }
 .viz-root {
   min-height: 100vh; background: var(--surface-0); color: var(--text-primary);
-  font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; padding: 18px;
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; padding: 32px 36px;
 }
-h1 { font-size: 20px; margin: 0 0 2px; }
-.sub { color: var(--text-secondary); margin: 0 0 14px; max-width: 1100px; }
-.layout { display: grid; grid-template-columns: minmax(340px, 600px) minmax(320px, 1fr); gap: 18px; align-items: start; }
+header { display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; max-width: 1192px; }
+#startOver { margin-left: auto; align-self: center; display: inline-flex; align-items: center; gap: 7px; }
+#startOver svg { width: 16px; height: 16px; }
+h1 { font-size: 26px; margin: 0; letter-spacing: -.015em; }
+.model { color: var(--text-primary); font: 19px "Times New Roman", Georgia, serif; }
+.model i { font-style: italic; }
+.layout { display: grid; grid-template-columns: minmax(340px, 560px) minmax(360px, 600px); gap: 32px; align-items: start; }
 @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
-.card { background: var(--surface-1); border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
-.card > h2, .card > summary { font-size: 13px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 600; }
-details.card > summary { cursor: pointer; margin: 0; }
-details.card[open] > summary { margin-bottom: 8px; }
-.toolbar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-button, select { font: inherit; font-size: 14px; color: var(--text-primary); background: var(--surface-1);
-  border: 1px solid var(--grid); border-radius: 7px; padding: 6px 11px; cursor: pointer; }
+@media (min-width: 981px) { .left { position: sticky; top: 16px; } }
+.card { background: var(--surface-1); border-radius: 14px; padding: 22px 26px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+button { font: inherit; font-size: 15px; color: var(--text-primary); background: var(--surface-1);
+  border: 1px solid var(--grid); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
 button:hover { border-color: var(--text-secondary); }
-button.tool[aria-pressed="true"] { border-width: 2px; padding: 5px 10px; font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+.board-wrap { background: var(--surface-1); border-radius: 14px; padding: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+svg#board { width: 100%; height: auto; display: block; touch-action: none; user-select: none; }
+.toolbar { display: flex; gap: 6px; margin: 12px 0 0; align-items: center; }
+.toolbar .gap { flex: 1; }
+button.tool[aria-pressed="true"] { border-width: 2px; padding: 6px 13px; font-weight: 600; }
 button.tool[data-tool="Z"][aria-pressed="true"] { border-color: var(--e-color); }
 button.tool[data-tool="X"][aria-pressed="true"] { border-color: var(--m-color); }
-button.tool[data-tool="Y"][aria-pressed="true"] { border-color: var(--text-primary); }
-button.tool[data-tool="inspect"][aria-pressed="true"], button.tool[data-tool="probe"][aria-pressed="true"] { border-color: var(--accent); }
-.swatch { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: 0; }
+button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--accent); }
+.swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: 0; }
 .swatch.e { background: var(--e-color); border-radius: 50%; }
 .swatch.m { background: var(--m-color); }
 .swatch.c { background: var(--config); height: 3px; vertical-align: 3px; width: 14px; }
-.board-wrap { background: var(--surface-1); border-radius: 10px; padding: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
-svg#board { width: 100%; height: auto; display: block; touch-action: none; user-select: none; }
-.status { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
-.stat { background: var(--surface-1); border-radius: 8px; padding: 8px 10px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
-.stat .label { font-size: 12px; color: var(--text-secondary); }
-.stat .value { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.log { font-size: 14px; color: var(--text-secondary); min-height: 2.9em; margin-top: 10px; }
+.log { font-size: 15px; color: var(--text-primary); min-height: 1.55em; margin-top: 12px; }
 .log b { color: var(--text-primary); }
-.options { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; font-size: 14px; margin: 4px 0 14px; }
-.options select { padding: 3px 6px; font-size: 13px; }
-.missions { list-style: none; padding: 0; margin: 0; }
-.missions li { padding: 5px 0 5px 28px; position: relative; border-bottom: 1px solid var(--grid-ghost); font-size: 14px; }
-.missions li:last-child { border-bottom: 0; }
-.missions li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 15px; height: 15px; border: 2px solid var(--grid); border-radius: 50%; }
-.missions li.done::before { background: var(--accent); border-color: var(--accent); }
-.missions li.done::after { content: "✓"; position: absolute; left: 5px; top: 4px; color: #fff; font-size: 12px; font-weight: 700; }
-.missions li.current { font-weight: 600; }
-.missions li.part { padding-left: 0; border-bottom: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); padding-top: 10px; }
-.missions li.part::before { display: none; }
-.missions .hint { display: block; font-weight: 400; color: var(--text-secondary); font-size: 13px; }
-.lesson { border-left: 3px solid var(--accent); padding: 6px 10px; margin-top: 10px; font-size: 14px; }
+.state { margin-top: 14px; padding: 14px 18px; background: var(--surface-1); border-radius: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; align-items: baseline; }
+.state .psi { font: 26px/1.35 "Times New Roman", Georgia, serif; overflow-x: auto; white-space: nowrap; }
+.state .psi sub { font-size: 13px; }
+.state .logical { grid-column: 1; font-size: 15px; color: var(--text-primary); }
+.state .logical b { color: var(--text-primary); font: 20px "Times New Roman", Georgia, serif; }
+.state .energy { grid-column: 2; grid-row: 1 / 3; text-align: right; font-size: 13px; color: var(--text-secondary); }
+.state .energy b { display: block; font-size: 28px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.dots { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 18px; }
+.dots .sep { width: 10px; }
+.dot { width: 13px; height: 13px; padding: 0; border-radius: 50%; border: 2px solid var(--grid); background: transparent; }
+.dot.done { background: var(--accent); border-color: var(--accent); }
+.dot.current { border-color: var(--text-primary); }
+.dots .free { margin-left: auto; font-size: 14px; padding: 3px 11px; }
+.hint .over { font-size: 14px; padding: 3px 11px; }
+.dots .free[aria-pressed="true"] { border-color: var(--text-primary); font-weight: 600; }
+.part { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); }
+.task { font-size: 22px; font-weight: 650; margin: 4px 0 4px; line-height: 1.3; letter-spacing: -.01em; }
+.hint { color: var(--text-primary); font-size: 16px; }
+.setup { margin-top: 10px; }
+.lesson { border-left: 3px solid var(--accent); padding: 4px 14px; margin: 0 0 20px; font-size: 15px; }
 .lesson:empty { display: none; }
-.formula { background: var(--surface-0); border-radius: 8px; padding: 12px 14px; margin: 4px 0 8px; overflow-x: auto; }
-.formula .psi { font: 30px/1.3 "Times New Roman", Georgia, serif; white-space: nowrap; }
-.formula .psi sub { font-size: 15px; }
-.formula .en { font-size: 14px; color: var(--text-secondary); margin-top: 6px; }
-.formula .en b { color: var(--text-primary); font-size: 17px; }
-.formula i { font-style: italic; }
-table.amps { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
-table.amps th { text-align: left; font-weight: 600; font-size: 12px; color: var(--text-secondary); padding: 2px 4px; }
-table.amps td { padding: 2px 4px; }
-.bar { height: 10px; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 0; }
-.barbox { width: 110px; background: var(--grid-ghost); border-radius: 0 4px 4px 0; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.muted { color: var(--text-muted); }
-.ob { text-decoration: overline; }
-.small { font-size: 13px; color: var(--text-secondary); }
+.panel { border-top: 1px solid var(--grid-ghost); margin-top: 20px; padding-top: 18px; }
+.small { font-size: 15px; color: var(--text-primary); }
 .small b { color: var(--text-primary); }
-kbd { font: 12px ui-monospace, Menlo, monospace; border: 1px solid var(--grid); border-radius: 4px; padding: 0 4px; }
-details.rule summary { cursor: pointer; font-weight: 600; font-size: 14px; }
-details.rule p { margin: 6px 0; font-size: 14px; }
-.strip { display: inline-flex; gap: 2px; vertical-align: middle; }
-.strip span { display: inline-block; min-width: 26px; text-align: center; font-size: 12px; font-weight: 600; border-radius: 4px;
-  padding: 1px 2px; background: var(--surface-0); font-variant-numeric: tabular-nums; }
-.strip span.neg { background: var(--text-primary); color: var(--surface-1); }
-.strip span.zero { color: var(--text-muted); }
-table.loops { border-collapse: collapse; width: 100%; font-size: 14px; }
-table.loops td { padding: 4px 4px; vertical-align: middle; }
-table.loops tr:hover td { background: var(--surface-0); }
-.trk { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; font-size: 13px; margin-bottom: 8px; }
-.trk div b { display: block; font-size: 17px; font-variant-numeric: tabular-nums; }
+.ob { text-decoration: overline; }
+.muted { color: var(--text-muted); }
+.seg { display: inline-flex; border: 1px solid var(--grid); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 5px 12px; background: transparent; }
+.seg button + button { border-left: 1px solid var(--grid); }
+.seg button[aria-pressed="true"] { background: var(--surface-0); font-weight: 600; }
+.row { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 12px 0; font-size: 15px; }
+.snaps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0 8px; }
+.snaps.pair { grid-template-columns: 1fr auto 1fr; align-items: center; }
+.snap { text-align: center; font-size: 14px; }
+.snap svg { width: 100%; height: auto; display: block; background: var(--surface-0); border-radius: 8px; }
+.flip { text-align: center; font-size: 14px; color: var(--text-primary); line-height: 1.3; }
+.flip b { display: block; font-size: 22px; color: var(--text-primary); margin-top: 2px; }
+.badge { display: inline-block; min-width: 50px; font-size: 20px; font-weight: 700; line-height: 1.2; padding: 1px 10px; margin-top: 6px;
+  border-radius: 8px; border: 2px solid var(--text-primary); font-variant-numeric: tabular-nums; }
+.badge.neg { background: var(--text-primary); color: var(--surface-1); }
+.verdict { font-size: 15px; margin-top: 10px; }
+table.amps { border-collapse: collapse; width: 100%; font-size: 15px; font-variant-numeric: tabular-nums; }
+table.amps th { text-align: left; font-weight: 600; font-size: 13px; color: var(--text-secondary); padding: 4px 6px; }
+table.amps td { padding: 6px 6px; border-top: 1px solid var(--grid-ghost); }
+table.amps tr[data-m]:hover td { background: var(--surface-0); }
+.heatstat { display: flex; gap: 28px; font-size: 14px; color: var(--text-secondary); margin: 12px 0; }
+.heatstat b { display: block; font-size: 21px; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.heat input[type=range] { width: 120px; vertical-align: middle; }
+#heatBtn[aria-pressed="true"] { border-color: var(--accent); border-width: 2px; padding: 6px 13px; font-weight: 600; }
 .chart { position: relative; }
 .chart svg { width: 100%; height: auto; display: block; }
 .tip { position: absolute; pointer-events: none; background: var(--surface-1); border: 1px solid var(--grid); border-radius: 6px;
-  padding: 3px 7px; font-size: 12px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.12); display: none; }
-.snaps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 520px; }
-.snaps.pair { grid-template-columns: 1fr auto 1fr; align-items: center; }
-.flip { text-align: center; font-size: 13px; color: var(--text-secondary); line-height: 1.3; }
-.flip b { display: block; font-size: 22px; color: var(--text-primary); margin-top: 2px; }
-.badge { display: inline-block; min-width: 54px; font-size: 24px; font-weight: 700; line-height: 1.2; padding: 1px 10px; margin-top: 4px;
-  border-radius: 8px; border: 2px solid var(--text-primary); font-variant-numeric: tabular-nums; }
-.badge.neg { background: var(--text-primary); color: var(--surface-1); }
-.snap { text-align: center; font-size: 13px; }
-.snap svg { width: 100%; height: auto; display: block; background: var(--surface-0); border-radius: 6px; }
-.snap .amp { font-variant-numeric: tabular-nums; margin-top: 2px; }
-.verdict { font-size: 14px; margin-top: 8px; }
-
-@media (min-width: 981px) { .left { position: sticky; top: 12px; } }
-.layout { grid-template-columns: minmax(340px, 540px) minmax(360px, 1fr); }
-.dash { padding-top: 14px; }
-.kets { display: grid; grid-template-columns: 78px 1fr; gap: 6px 10px; align-items: center; background: var(--surface-0); border-radius: 8px; padding: 10px 12px; }
-.kets .klabel { font-size: 12px; color: var(--text-secondary); line-height: 1.2; }
-.kets .psi { font: 26px/1.3 "Times New Roman", Georgia, serif; overflow-x: auto; white-space: nowrap; }
-.kets .psi sub { font-size: 13px; }
-.kets .psi .muted { white-space: normal; display: block; font: 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-.chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0 4px; }
-.chip { background: var(--surface-0); border-radius: 8px; padding: 6px 9px; }
-.chip .label { display: block; font-size: 11.5px; color: var(--text-secondary); }
-.chip b { font-size: 19px; font-variant-numeric: tabular-nums; }
-.mission { border-top: 1px solid var(--grid-ghost); margin-top: 8px; padding-top: 8px; font-size: 14px; }
-.mhead { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); margin-bottom: 2px; }
-#mNow b { font-size: 15px; }
-#mNow .hint { display: block; color: var(--text-secondary); font-size: 13px; }
-.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 -1px; }
-.tabs button { border-radius: 8px 8px 0 0; border-bottom: 0; padding: 6px 12px; background: var(--surface-0); color: var(--text-secondary); }
-.tabs button[aria-selected="true"] { background: var(--surface-1); color: var(--text-primary); font-weight: 600; border-color: var(--grid); }
-.tabpanel { border-top-left-radius: 0; }
-.heat { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 14px; margin: 0 0 12px; }
-.heat input[type=range] { width: 110px; vertical-align: middle; }
-.heat select { padding: 3px 6px; font-size: 13px; }
-.heatchips { grid-template-columns: 1fr 1fr 2fr; }
-#heatBtn[aria-pressed="true"] { border-color: var(--accent); border-width: 2px; padding: 5px 10px; font-weight: 600; }
+  padding: 4px 8px; font-size: 13px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.12); display: none; }
 </style>
 </head>
 <body>
 <div class="viz-root">
-  <h1>Toric code playground</h1>
-  <p class="sub">Each click applies a Pauli gate to one qubit (an edge). The dashboard shows what that does to the quantum state |ψ⟩.</p>
+  <header>
+    <h1>Toric code playground</h1>
+    <span class="model">one qubit per edge of a <span id="sizeName">6 × 6</span> torus, &nbsp;<i>H</i> = −Σ<sub><i>v</i></sub> <i>A<sub>v</sub></i> − Σ<sub><i>p</i></sub> <i>B<sub>p</sub></i></span>
+    <button id="startOver" title="Clear every mission and begin again"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 3v6h6"/></svg>Start over</button>
+  </header>
 
   <div class="layout">
     <div class="left">
+      <div class="board-wrap"><svg id="board" aria-label="Toric code lattice on a torus"></svg></div>
       <div class="toolbar" role="toolbar" aria-label="Tools">
-        <button class="tool" data-tool="Z" aria-pressed="true" title="Key 1"><span class="swatch e"></span>Z · e</button>
-        <button class="tool" data-tool="X" aria-pressed="false" title="Key 2"><span class="swatch m"></span>X · m</button>
-        <button class="tool" data-tool="Y" aria-pressed="false" title="Key 3">Y · both</button>
-        <button class="tool" data-tool="inspect" aria-pressed="false" title="Key 4">Inspect</button>
-        <button class="tool" data-tool="probe" aria-pressed="false" title="Key 5">Probe</button>
+        <button class="tool" data-tool="Z" aria-pressed="true" title="Key 1"><span class="swatch e"></span>Z</button>
+        <button class="tool" data-tool="X" aria-pressed="false" title="Key 2"><span class="swatch m"></span>X</button>
+        <button class="tool" data-tool="inspect" aria-pressed="false" title="Key 3">Inspect</button>
+        <span class="gap"></span>
         <button id="undo" title="Ctrl/Cmd+Z">Undo</button>
         <button id="reset">Reset</button>
       </div>
-      <div class="board-wrap"><svg id="board" aria-label="Toric code lattice on a torus"></svg></div>
       <div class="log" id="log"></div>
-      <div class="options">
-        <label>Start state <select id="start">
-          <optgroup label="Basis states">
-            <option value="psi0">|00⟩ (ψ₀: every Z loop = +1)</option>
-            <option value="s01">|01⟩</option><option value="s10">|10⟩</option><option value="s11">|11⟩</option>
-          </optgroup>
-          <optgroup label="Product superpositions">
-            <option value="plus0">|+0⟩</option><option value="minus0">|−0⟩</option><option value="zeroplus">|0+⟩</option>
-            <option value="plusplus">|++⟩</option><option value="plusminus">|+−⟩</option><option value="plusi0">|+i,0⟩ = (|00⟩ + i|10⟩)/√2</option>
-          </optgroup>
-          <optgroup label="Entangled (Bell) states">
-            <option value="phip">Φ⁺ = (|00⟩ + |11⟩)/√2</option><option value="phim">Φ⁻ = (|00⟩ − |11⟩)/√2</option>
-            <option value="psip">Ψ⁺ = (|01⟩ + |10⟩)/√2</option><option value="psim">Ψ⁻ = (|01⟩ − |10⟩)/√2</option>
-          </optgroup>
-          <option value="random">random ground state</option>
-        </select></label>
-        <label>Size <select id="size"><option value="4">4 × 4</option><option value="5">5 × 5</option><option value="6" selected>6 × 6</option><option value="8">8 × 8</option><option value="10">10 × 10</option><option value="12">12 × 12</option><option value="14">14 × 14</option><option value="16">16 × 16</option><option value="18">18 × 18</option><option value="20">20 × 20</option></select></label>
-        <label><input type="checkbox" id="showStrings" checked> strings</label>
-      </div>
-      <div class="heat">
-        <button id="heatBtn">▶ Heat bath</button>
-        <label title="Moves evenly in the pair-creation rate e^(−4/T)">cold <input type="range" id="temp" min="-5" max="-1.5" step="0.01" value="-2.895"> hot</label> <span>T = <b id="tempVal">0.60</b></span>
-        <span class="small" id="pairRate"></span>
-        <label>error correction <select id="corrEvery"><option value="0" selected>off</option><option value="1">every sweep</option><option value="2">every 2 sweeps</option><option value="5">every 5 sweeps</option><option value="10">every 10 sweeps</option><option value="20">every 20 sweeps</option></select></label>
-        <button id="decodeBtn">Decode now</button>
-        <label>speed <select id="speed"><option value="2">2</option><option value="6" selected>6</option><option value="25">25</option></select> sweeps/s</label>
+      <div class="state">
+        <div class="psi" id="dMicro"></div>
+        <div class="logical" id="dLogical"></div>
+        <div class="energy">E − E₀<b id="cE">0</b></div>
       </div>
     </div>
 
-    <div class="right">
-      <div class="card dash">
-        <div class="kets">
-          <div class="klabel">microscopic</div><div class="psi" id="dMicro"></div>
-          <div class="klabel">logical<br>(2 qubits)</div><div class="psi" id="dLogical"></div>
-        </div>
-        <div class="chips">
-          <div class="chip"><span class="label">E − E₀</span><b id="cE">0</b></div>
-          <div class="chip"><span class="label"><span class="swatch e"></span>e anyons</span><b id="cNe">0</b></div>
-          <div class="chip"><span class="label"><span class="swatch m"></span>m anyons</span><b id="cNm">0</b></div>
-          <div class="chip"><span class="label">⟨start|ψ⟩</span><b id="cOv">1</b></div>
-          <div class="chip"><span class="label">net logical gate</span><b id="cGate">𝟙</b></div>
-        </div>
-        <p class="small" id="dStab"></p>
-        <div id="dHeat" hidden>
-          <div class="chips heatchips">
-            <div class="chip"><span class="label">time</span><b id="hT">0</b> <span class="small">sweeps</span></div>
-            <div class="chip"><span class="label">T</span><b id="hTemp">0.6</b></div>
-            <div class="chip wide"><span class="label">if decoded now</span><b id="hDec">intact</b></div>
-          </div>
-          <div class="chart" id="chartHeat"></div>
-        </div>
-        <div class="mission">
-          <div class="mhead" id="mHead"></div>
-          <div id="mNow"></div>
-          <div class="lesson" id="lesson"></div>
-        </div>
+    <div class="right card">
+      <div class="dots" id="dots"></div>
+      <div class="lesson" id="lesson"></div>
+      <div class="part" id="mPart"></div>
+      <div class="task" id="mTask"></div>
+      <div class="hint" id="mHint"></div>
+      <div class="setup" id="mSetup"></div>
+      <div class="row" id="free" hidden>
+        <span>Start</span><span class="seg" id="startSeg"></span>
+        <span class="seg" id="sizeSeg"></span>
+        <span class="seg" id="viewSeg"></span>
       </div>
 
-      <div class="tabs" role="tablist">
-        <button data-tab="wave" aria-selected="true">Wavefunction</button>
-        <button data-tab="measure" aria-selected="false">Measure</button>
-        <button data-tab="gates" aria-selected="false">Gates</button>
-        <button data-tab="trackers" aria-selected="false">Trackers</button>
-        <button data-tab="probe" aria-selected="false">Probe</button>
-        <button data-tab="heat" aria-selected="false">Heat</button>
-        <button data-tab="missions" aria-selected="false">Missions</button>
-        <button data-tab="rules" aria-selected="false">Rules</button>
-      </div>
-      <div class="card tabpanel" data-panel="wave">
-        <p class="small" id="snapIntro"></p>
+      <div class="panel" id="pWave" hidden>
+        <div class="small" id="snapIntro"></div>
         <div class="snaps" id="snaps"></div>
         <div class="verdict" id="snapVerdict"></div>
-        <p class="small"><button id="resample">New samples</button> &nbsp;<span class="swatch c"></span>edge in state |1⟩ (drawn across the edge, so the |1⟩ edges form loops on the dual lattice). Every other qubit is |0⟩.</p>
+        <div class="row small"><button id="resample">New pictures</button><span><span class="swatch c"></span>a qubit in |1⟩, drawn across its edge</span></div>
       </div>
-      <div class="card tabpanel" data-panel="measure" hidden>
-        <p class="small">You read a logical qubit by measuring a loop that wraps the torus. The loop gives +1 or −1. Hover a row to see its loop on the board.</p>
+
+      <div class="panel" id="pLoops" hidden>
+        <p class="small" style="margin-top:0">A qubit is read by a loop that wraps the torus. Hover a row to see its loop.</p>
         <table class="amps" id="measure"></table>
         <p class="small" id="measureNote"></p>
-        <details class="rule"><summary>Why it doesn’t matter which row the loop is on (and when it does)</summary>
-          <p class="small">Below, the same Z loop is measured on every row (top line) and every column (bottom line), left to right = row or column 0, 1, 2, …. Black = −1, grey 0 = no definite value. Hover a cell to see that loop.</p>
-          <table class="loops" id="loops"></table>
-          <p class="small" id="loopNote"></p></details>
       </div>
-      <div class="card tabpanel" data-panel="gates" hidden>
-        <p class="small">The 4 ground states form a register of <b>2 logical qubits</b>, |q₁q₂⟩. The start state |00⟩ is ψ₀. The Z loop along x reads q₁ and the Z loop along y reads q₂ (see the <b>Measure</b> tab). No measurement or error on a few edges can read or change them: they are stored in loops around the whole torus.</p>
-        <table class="amps" id="gates"></table>
-        <p class="small">Hover a gate to see its path on the board. <b>Apply</b> does the whole loop at once; dragging it yourself on the board does the same.</p>
-        <details class="rule"><summary>Why a gate is a braid</summary>
-          <p>In the |q₁ = 1⟩ part of the state an m has gone around the torus along y, so one unit of m flux threads the loop along x. Dragging an e around x encircles that flux and gives −1: the same e–m braiding phase as in Part 1. In the |q₁ = 0⟩ part there is no flux and no phase. So <span class="ob">Z</span>₁ is literally “braid an e around the flux in the hole”. <span class="ob">X</span>₁ creates that flux; <span class="ob">Z</span>₁ detects it with a phase.</p></details>
-        <details class="rule"><summary>Errors and protection</summary>
-          <p>A stray Z or X on one edge makes an anyon pair (the energy goes up by 4). If the pair is removed by closing its string locally, the register is untouched: ⟨start|ψ⟩ = 1. An error only changes the stored qubits if its string wraps the torus, which takes at least L edges. A bigger torus means better protection. Error correction is the job of pairing up anyons by short strings before they wander that far.</p></details>
-        <details class="rule"><summary>What toric-code braiding cannot do</summary>
-          <p>Toric-code anyons are <b>abelian</b>: braiding them only multiplies the state by ±1. That gives the Pauli gates <span class="ob">X</span> and <span class="ob">Z</span> above, and nothing more. There is no Hadamard and no entangling gate: from |00⟩ every move leaves the register in a single basis state, and from |+0⟩ it never becomes entangled. Entanglement already present is kept but only shuffled: from Φ⁺ the four gates only move you among the four Bell states (<span class="ob">Z</span>₁ gives Φ⁻, <span class="ob">X</span>₁ gives Ψ⁺). Try it.</p>
-          <p>Computing by braiding alone needs <b>non-abelian</b> anyons, such as Fibonacci anyons. There, many anyons share a degenerate space, and exchanging two of them applies a matrix on that space, not just a phase. Braids then approximate any gate.</p>
-          <p class="small">A. Kitaev, <i>Fault-tolerant quantum computation by anyons</i>, <a href="https://arxiv.org/abs/quant-ph/9707021">arXiv:quant-ph/9707021</a>. C. Nayak, S. H. Simon, A. Stern, M. Freedman, S. Das Sarma, <i>Non-Abelian anyons and topological quantum computation</i>, <a href="https://arxiv.org/abs/0707.1889">arXiv:0707.1889</a>.</p></details>
+
+      <div class="panel heat" id="pHeat" hidden>
+        <div class="row">
+          <button id="heatBtn">▶ Heat bath</button>
+          <label class="small">cold <input type="range" id="temp" min="-5" max="-1.5" step="0.01" value="-2.895"> hot</label>
+          <span>T = <b id="tempVal">0.60</b></span>
+        </div>
+        <div class="row">
+          <span class="small">error correction</span><span class="seg" id="corrSeg"></span>
+          <button id="decodeBtn">Decode now</button>
+        </div>
+        <div class="heatstat">
+          <div>time<b id="hT">0</b></div>
+          <div>if decoded now<b id="hDec">✓ intact</b></div>
+        </div>
+        <div class="chart" id="chartHeat"></div>
       </div>
-      <div class="card tabpanel" data-panel="trackers" hidden>
-        <div class="chart" id="chartE"></div>
-        <div class="chart" id="chartO"></div>
-        <p class="small" id="trk"></p>
-      </div>
-      <div class="card tabpanel" data-panel="probe" hidden>
-        <p class="small" id="probeText"></p>
-      </div>
-      <div class="card tabpanel" data-panel="heat" hidden>
-        <p class="small"><b>The heat bath.</b> Each sweep, every edge gets on average one attempt at a random X or Z. An attempt is accepted with probability min(1, e<sup>−ΔE/T</sup>): creating an anyon pair (ΔE = +4) succeeds with probability e<sup>−4/T</sup>; moving or annihilating anyons is free. The state stays a Pauli string times the start state, so this simulation is exact for this noise.</p>
-        <p class="small"><b>Reading the register.</b> First the anyons must be removed. <b>Decode</b> joins the closest anyons by shortest strings (a simple greedy decoder). If a pair is joined the wrong way round the torus, the decoder itself completes a logical error. The dashboard shows what you would read if you decoded now.</p>
-        <p class="small"><b>Memory experiment.</b> Start from a ground state, run the heat bath, and record the time of the first logical error. Without correction the anyons are only removed at readout; with correction they are removed every N sweeps, with N set by <b>error correction</b> below the board (every sweep if it is off). In both cases the memory counts as lost at the first sweep where decoding would give a logical error.</p>
-        <div class="heat"><label>runs per point <select id="xRuns"><option>10</option><option selected>20</option><option>40</option></select></label>
-          <label>max <select id="xMax"><option>1000</option><option selected>2000</option><option>5000</option></select> sweeps</label>
-          <button id="xRun">Run at T = <span id="xT">0.60</span></button> <span class="small" id="xProg"></span></div>
+
+      <div class="panel" id="pExp" hidden>
+        <div class="row" style="margin-top:0"><button id="xRun">Run the memory experiment at T = <span id="xT">0.60</span></button> <span class="small" id="xProg"></span></div>
+        <div class="chart" id="xPlot" style="margin-bottom:10px"></div>
         <table class="amps" id="xTable"></table>
         <p class="small" id="xNote"></p>
-        <details class="rule"><summary>Why the two columns behave so differently</summary>
-          <p>Without correction, thermal pairs keep appearing at rate ∝ e<sup>−4/T</sup> and then wander for free. Once enough anyons have piled up, the decoder can no longer tell which ones belong together, and it joins some the wrong way. A bigger torus has more places for pairs to appear, so it does not help: the memory time is set by T, not by L.</p>
-          <p>With correction every sweep, a pair is usually removed while its two anyons are still close. Correcting less often gives pairs more time to drift apart, and the advantage fades quickly: try every 5 or 10 sweeps. A logical error needs a pair to drift about L/2 apart between two corrections, which becomes rapidly less likely as L grows. So the protection really is topological, but only together with active error correction: the 2D toric code on its own is not a self-correcting memory. The reason is the energy barrier: a logical error only ever costs the +4 of one pair, whatever L is. A memory that protects itself at T &gt; 0 needs a barrier that grows with L, as in the 4D toric code, where errors are membranes rather than strings.</p></details>
-      </div>
-      <div class="card tabpanel" data-panel="missions" hidden>
-        <ul class="missions" id="missions"></ul>
-      </div>
-      <div class="card tabpanel" data-panel="rules" hidden>
-        <details class="rule" open><summary>The model</summary>
-          <p>One qubit per edge. H = −Σ<sub>v</sub> A<sub>v</sub> − Σ<sub>p</sub> B<sub>p</sub>, with the star A<sub>v</sub> = ∏ X on the 4 edges at a vertex and the plaquette B<sub>p</sub> = ∏ Z around a square. All of them commute, each is ±1, and the ground states have all of them +1. So E − E₀ = 2 × (number of −1 stabilizers) = 2 × (number of anyons).</p></details>
-        <details class="rule"><summary>What the ground state looks like</summary>
-          <p>In the Z basis (each edge |0⟩ or |1⟩), B<sub>p</sub> = +1 means an even number of |1⟩ edges around every square: the |1⟩ edges form closed loops on the dual lattice. A<sub>v</sub> = +1 means flipping the 4 edges at a vertex (which adds a small loop) does not change the amplitude. So a ground state is an equal-weight superposition of all closed-loop pictures: a loop condensate.</p></details>
-        <details class="rule"><summary>e and m in the wavefunction</summary>
-          <p><b>m</b> (B<sub>p</sub> = −1): an odd number of |1⟩ edges at that square. A loop ends there, and you can see it in every single picture.</p>
-          <p><b>e</b> (A<sub>v</sub> = −1): flipping the star at that vertex changes the sign of the amplitude. No single picture shows it; it is a sign twist between pictures. Use <b>Inspect</b> on an e to see the two pictures side by side.</p></details>
-        <details class="rule"><summary>Braiding and the ground states</summary>
-          <p>Z and X on the same qubit anticommute. When an e goes around an m, its Z loop crosses the m's X string once, so the state picks up −1: ⟨start|ψ⟩ = −1.</p>
-          <p>A string that wraps the torus is not a product of stabilizers. It maps one ground state to another: a logical operator. See the <b>Gates</b> tab.</p></details>
       </div>
     </div>
   </div>
@@ -489,81 +385,81 @@ if (typeof module !== 'undefined') module.exports = { makeModel, makeRng, START_
 if (typeof document !== 'undefined') (function () {
   const svg = document.getElementById('board');
   const NS = 'http://www.w3.org/2000/svg';
-  let M, S, C0, history, track, tool = 'Z', drag = null, probeBox = null, highlight = null, inspect = null, samples = [];
-  let progress = {}, seed = 12345;
-  const rand = makeRng(seed);
+  const MISSION_L = 6, SIZES = [4, 6, 8, 10];
+  let L = MISSION_L;
+  const STARTS = { '00': ['00', START_STATES.psi0], '+0': ['+0', START_STATES.plus0], '++': ['++', START_STATES.plusplus],
+    'phi+': ['Φ<sup>+</sup>', START_STATES.phip] };
+  const VIEWS = { wave: 'Pictures', loops: 'Loops', heat: 'Heat' };
+  const CORR = [[0, 'off'], [1, 'every sweep'], [10, 'every 10']];
+  let M, S, C0, startKey = '00', history, tool = 'Z', drag = null, highlight = null, inspect = null, samples = [];
+  let progress = {}, cur = 0, lessonOf = null, view = 'wave', corrEvery = 0;
+  const rand = makeRng(12345);
 
-  const hadAnyons = () => track.some((t) => t.dE > 0);
-  const startIs = (k) => document.getElementById('start').value === k;
   const missions = [
-    { part: 'Part 1 · Anyons', id: 'pair', text: 'Create a pair of e anyons.', hint: 'Z gate, click any edge. Watch the energy.',
+    { part: 'Anyons', id: 'pair', panel: 'wave', start: '00', text: 'Create a pair of e anyons.', hint: 'Z is selected. Click any edge and watch the energy.',
       lesson: 'One Z flipped two stars to −1: two e anyons, energy +4. Anyons come in pairs.', test: (c) => c.ne >= 2 },
-    { id: 'move', text: 'Move one e at least 3 steps from its partner.', hint: 'Z on edges next to an e. Does the energy change?',
+    { id: 'move', panel: 'wave', start: '00', text: 'Move one e at least 3 steps from its partner.', hint: 'Z on edges next to an e. Does the energy change?',
       lesson: 'Moving an anyon costs nothing: the energy stays at +4 however long the string. Only its ends are excitations.',
       test: (c) => c.ne === 2 && M.torusDist(c.an.e[0], c.an.e[1]) >= 3 },
-    { id: 'inspectE', text: 'Inspect an e: what is it in the wavefunction?', hint: 'Inspect tool, click on an orange circle.',
-      lesson: 'The two pictures differ by flipping the 4 edges at that vertex, and their amplitudes have opposite signs: A_v = −1. An e is a sign twist between pictures, not something drawn in any single picture.',
+    { id: 'inspectE', panel: 'wave', start: '00', text: 'Inspect an e: what is it in the wavefunction?', hint: 'Choose Inspect, then click an orange circle.',
+      lesson: 'The two pictures differ by flipping the 4 edges at that vertex, and their amplitudes have opposite signs: A<sub>v</sub> = −1. An e is a sign twist between pictures, not something drawn in any single picture.',
       test: () => inspect && inspect.type === 'v' && inspect.hasAnyon },
-    { id: 'annihilate', text: 'Bring the e’s back together and annihilate them.', hint: 'Close the string by any route.',
-      lesson: 'Energy back to 0 and ⟨start|ψ⟩ = 1: the same state as before. A closed small Z loop is a product of plaquettes B_p, each +1 on the ground state.',
+    { id: 'annihilate', panel: 'wave', start: '00', text: 'Bring the e’s back together and annihilate them.', hint: 'Close the string by any route.',
+      lesson: 'Energy back to 0 and |ψ⟩ = |00⟩ again. A small closed Z loop is a product of plaquettes B<sub>p</sub>, each +1 on the ground state.',
       test: (c) => c.gs && c.zCount > 0 && progress.pair },
-    { id: 'mpair', text: 'Create a pair of m anyons.', hint: 'X gate. Its string runs across edges, on the dual lattice.',
+    { id: 'mpair', panel: 'wave', start: '00', text: 'Create a pair of m anyons.', hint: 'Choose X. Its string runs across edges, on the dual lattice.',
       lesson: 'X flips edges between |0⟩ and |1⟩, so every picture in the superposition now has an open string.', test: (c) => c.nm >= 2 },
-    { id: 'inspectM', text: 'Inspect an m.', hint: 'Inspect tool, click on a blue square.',
-      lesson: 'In every picture an odd number of |1⟩ edges touch this square: a loop ends here, B_p = −1. Unlike e, an m is visible in each picture.',
+    { id: 'inspectM', panel: 'wave', start: '00', text: 'Inspect an m.', hint: 'Choose Inspect, then click a blue square.',
+      lesson: 'In every picture an odd number of |1⟩ edges touch this square: a loop ends here, B<sub>p</sub> = −1. Unlike e, an m is visible in each picture.',
       test: () => inspect && inspect.type === 'p' && inspect.hasAnyon },
-    { id: 'braid', text: 'Braid: take an e around an m, then annihilate everything.', hint: 'Make an m pair, then an e pair, walk one e around one m, close all strings.',
-      lesson: '⟨start|ψ⟩ = −1: back in the start state but with a minus sign. The Z loop crossed the m’s X string once, and ZX = −XZ. That −1 is the e–m braiding phase.',
+    { id: 'braid', panel: null, start: '00', text: 'Braid: take an e around an m, then annihilate everything.', hint: 'Make an m pair, then an e pair, walk one e around one m, close all strings.',
+      lesson: '|ψ⟩ = −|00⟩: back to the start state, but with a minus sign. The Z loop crossed the m’s X string once, and ZX = −XZ. That −1 is the e–m braiding phase.',
       test: (c) => c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
-    { part: 'Part 2 · Computing with anyons', id: 'xgate', text: 'Flip qubit 1: drag an m around the torus along y, then annihilate it.',
-      hint: 'X gates on the horizontal edges of one column, bottom to top (or hover <span class="ob">X</span>₁ in “Computing with anyons”).',
-      lesson: '|00⟩ → |10⟩. Energy 0, yet ⟨start|ψ⟩ = 0: a different ground state. That closed X loop is the logical gate <span class="ob">X</span>₁.',
+    { part: 'Computing with anyons', id: 'xgate', panel: 'loops', start: '00', text: 'Flip qubit 1: drag an m around the torus along y.',
+      hint: 'X on the horizontal edges of one column, bottom to top. Drag to do it in one stroke.',
+      lesson: '|00⟩ → |10⟩. Energy 0, but a different ground state: the Z loop along x now reads −1. That closed X loop is the logical gate <span class="ob">X</span>₁.',
       test: (c) => c.gs && c.wind.mY },
-    { id: 'basis', text: 'From |00⟩, prepare all four basis states.', hint: 'Combine m loops along y (<span class="ob">X</span>₁) and along x (<span class="ob">X</span>₂).',
+    { id: 'basis', panel: 'loops', start: '00', text: 'From |00⟩, prepare all four basis states.', hint: 'Combine m loops along y (<span class="ob">X</span>₁) and along x (<span class="ob">X</span>₂).',
       lesson: 'Four orthogonal ground states with the same energy: two qubits. No local measurement tells them apart; only loops around the torus do.',
-      test: () => progress.visited && progress.visited.size >= 4 },
-    { id: 'zgate', text: 'Phase gate: set Start to |+0⟩, then drag an e around the torus along x.', hint: 'Z gates on the horizontal edges of one row.',
-      lesson: '|+0⟩ → |−0⟩: the |10⟩ part got −1, the |00⟩ part did not. In |10⟩ an m flux threads the torus, and the e encircled it: the e–m braid of Part 1. A logical gate is a braid around the flux in the hole.',
-      test: (c) => startIs('plus0') && c.gs && c.wind.eX },
-    { id: 'protect', text: 'Protection: from |+0⟩, make a few anyon pairs with short strings, then remove them by closing each string locally.',
+      test: () => progress.visited.size >= 4 },
+    { id: 'zgate', panel: 'loops', start: '+0', text: 'Phase gate: from |+0⟩, drag an e around the torus along x.', hint: 'Z on the horizontal edges of one row.',
+      lesson: '|+0⟩ → |−0⟩: the |10⟩ part got −1, the |00⟩ part did not. In |10⟩ an m flux threads the torus, and the e encircled it: the e–m braid again. A logical gate is a braid around the flux in the hole.',
+      test: (c) => startKey === '+0' && c.gs && c.wind.eX },
+    { id: 'protect', panel: 'loops', start: '+0', text: 'Protection: from |+0⟩, make a few anyon pairs with short strings, then close each string locally.',
       hint: 'Any short Z or X strings, closed again without wrapping the torus.',
-      lesson: '⟨start|ψ⟩ = 1: local errors that are undone locally leave the register untouched, superposition and all. Only a string that wraps the torus, at least L edges, changes it. That is a logical error.',
-      test: (c) => startIs('plus0') && c.gs && hadAnyons() && Math.abs(c.ov[0] - 1) < 1e-9 && c.zCount + S.a.reduce((t, x) => t + x, 0) > 0 },
-    { part: 'Part 3 · Heat', id: 'heat', text: 'Switch on the heat bath at T = 0.6 and watch E − E₀.', hint: '▶ Heat bath, below the board.',
-      lesson: 'Pairs pop up at rate ∝ e^(−4/T), wander, and sometimes annihilate. The energy fluctuates around a thermal value instead of staying at 0.',
+      lesson: '|ψ⟩ = |+0⟩ again: local errors that are undone locally leave the qubits untouched. Even the + sign between |00⟩ and |10⟩ survives, because no local operator can tell those two states apart, so none can disturb the sign between them. Only a string that wraps the torus, at least L edges, changes them. That is a logical error.',
+      test: (c) => startKey === '+0' && c.gs && progress.hadAnyons && Math.abs(c.ov[0] - 1) < 1e-9 && c.zCount + S.a.reduce((t, x) => t + x, 0) > 0 },
+    { part: 'Heat', id: 'heat', panel: 'heat', text: 'Switch on the heat bath at T = 0.6 and watch the energy.', hint: '▶ Heat bath, below.',
+      lesson: 'Pairs pop up at rate ∝ e<sup>−4/T</sup>, wander, and sometimes annihilate. The energy fluctuates around a thermal value instead of staying at 0.',
       test: () => heat.t >= 20 },
-    { id: 'decodeNow', text: 'While anyons are out, press Decode now.', hint: 'Pause the bath if it helps.',
+    { id: 'decodeNow', panel: 'heat', text: 'While anyons are out, press Decode now.', hint: 'Decode is one round of error correction: it joins each anyon to its closest partner by a shortest string. Pause the bath if it helps.',
       lesson: 'The decoder joined each anyon to its closest partner. Usually that undoes the noise. When it pairs them the wrong way round the torus, it completes a logical error instead.',
       test: () => progress.decodedWithAnyons },
-    { id: 'fail', text: 'Without correction, run until a logical error appears.', hint: 'Watch “if decoded now” in the dashboard. Try T = 0.8 for speed.',
-      lesson: 'The register is lost even though every single error was local: enough anyons piled up that the decoder could not tell which belonged together.',
+    { id: 'fail', panel: 'heat', text: 'Without correction, run until a logical error appears.', hint: 'Watch “if decoded now”. Raise T to make it come sooner.',
+      lesson: 'The qubits are lost even though every single error was local: enough anyons piled up that the decoder could not tell which belonged together.',
       test: () => heat.failedPassive },
-    { id: 'active', text: 'Set error correction to “every sweep” and run for 200 sweeps.', hint: 'Then try every 5 or 10 sweeps: how much worse is it?',
-      lesson: 'Removing the anyons while they are still close keeps the register intact far longer at the same temperature.',
+    { id: 'active', panel: 'heat', fresh: true, text: 'Set error correction to “every sweep” and run for 200 sweeps.',
+      hint: 'Then press Reset and try every 10 sweeps: how much worse is it?',
+      lesson: 'Removing the anyons while they are still close keeps the qubits intact far longer at the same temperature.',
       test: () => heat.activeSweeps >= 200 },
-    { id: 'experiment', text: 'In the Heat tab, run the memory experiment.', hint: 'Compare how the two columns change with L.',
+    { id: 'experiment', panel: 'experiment', text: 'Run the memory experiment.', hint: 'It times the first logical error on tori from 4 × 4 to 14 × 14. Compare the two columns.',
       lesson: 'Without correction a bigger torus does not help. With correction the memory time grows rapidly with L: topological protection needs active error correction.',
       test: () => progress.experimentDone },
   ];
   const heat = { running: false, timer: null, t: 0, series: [], ref: null, failedPassive: false, activeSweeps: 0, firstErr: null };
 
   let s, pad, X, Y;
-  const geometry = () => { s = 560 / (M.L + 1.2); pad = 0.6 * s; X = (i) => pad + i * s; Y = (j) => pad + (M.L - j) * s; };
+  const geometry = () => { s = 560 / (L + 1.2); pad = 0.6 * s; X = (i) => pad + i * s; Y = (j) => pad + (L - j) * s; };
   const el = (tag, attrs, parent) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); (parent || svg).appendChild(n); return n; };
   const css = () => { const st = getComputedStyle(document.querySelector('.viz-root')); return (v) => st.getPropertyValue(v).trim(); };
 
-  function startState() {
-    const key = document.getElementById('start').value;
-    if (key !== 'random') return START_STATES[key].map((z) => z.slice());
-    let c = [0, 1, 2, 3].map(() => [rand() - 0.5, rand() - 0.5]); const n = Math.sqrt(c.reduce((t, z) => t + z[0] ** 2 + z[1] ** 2, 0));
-    return c.map((z) => [z[0] / n, z[1] / n]);
-  }
-  function start(L) {
-    M = makeModel(L); S = M.fresh(); C0 = startState(); history = []; probeBox = null; inspect = null;
-    progress.visited = new Set(); track = [];
+  function start(key, size = L) {
+    startKey = key; L = size; M = makeModel(L);
+    document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
+    progress.visited = new Set(); progress.hadAnyons = false;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
-    geometry(); record('start'); resample(); render();
-    log('Click an edge to apply the selected gate; click and drag to apply it along a path.');
+    geometry(); resample(); render();
+    log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
   }
   function stateKey(c) {          // ground state up to a global phase
     const k = c.findIndex((z) => cx.abs2(z) > 1e-9); const ph = cx.scale(cx.conj(c[k]), 1 / Math.sqrt(cx.abs2(c[k])));
@@ -571,29 +467,25 @@ if (typeof document !== 'undefined') (function () {
   }
   function counts() {
     const an = M.anyons(S), ne = an.e.length, nm = an.m.length, gs = ne + nm === 0;
-    const cur = gs ? M.logical(S, C0) : null;
-    const ov = gs ? cur.reduce((t, z, i) => cx.add(t, cx.mul(cx.conj(C0[i]), z)), [0, 0]) : [0, 0];
-    return { an, ne, nm, gs, cur, ov, en: M.energy(S), wind: M.windings(S), zCount: S.b.reduce((a, x) => a + x, 0) };
-  }
-  function record(label) {
-    const c = counts();
-    track.push({ n: track.length, dE: c.en.E - c.en.E0, ov: c.ov, label });
-    if (track.length > 400) track.shift();
+    const now = gs ? M.logical(S, C0) : null;
+    const ov = gs ? now.reduce((t, z, i) => cx.add(t, cx.mul(cx.conj(C0[i]), z)), [0, 0]) : [0, 0];
+    return { an, ne, nm, gs, now, ov, en: M.energy(S), wind: M.windings(S), zCount: S.b.reduce((a, x) => a + x, 0) };
   }
 
-  // ---------- main board
+  // ---------- board
   function edgeCopies(e) {
-    const { i, j, horizontal } = M.edgeInfo(e), L = M.L, out = [];
+    const { i, j, horizontal } = M.edgeInfo(e), out = [];
     if (horizontal) { out.push([i, j, i + 1, j, false]); if (j === 0) out.push([i, L, i + 1, L, true]); }
     else { out.push([i, j, i, j + 1, false]); if (i === 0) out.push([L, j, L, j + 1, true]); }
     return out;
   }
   const dualSeg = ([x1, y1, x2, y2]) => { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; return y1 === y2 ? [mx, my - 0.5, mx, my + 0.5] : [mx - 0.5, my, mx + 0.5, my]; };
-  function siteCopies(i, j) { const L = M.L, out = [[i, j, false]];
+  function siteCopies(i, j) { const out = [[i, j, false]];
     if (i === 0) out.push([L, j, true]); if (j === 0) out.push([i, L, true]); if (i === 0 && j === 0) out.push([L, L, true]); return out; }
+  const edgeName = (e) => { const { i, j, horizontal } = M.edgeInfo(e); return `edge ${e} = ${horizontal ? 'h' : 'v'}(${i}, ${j})`; };
 
   function render() {
-    const col = css(), L = M.L, W = 2 * pad + L * s, c = counts();
+    const col = css(), W = 2 * pad + L * s, c = counts();
     svg.innerHTML = ''; svg.setAttribute('viewBox', `0 0 ${W} ${W}`);
     const clip = el('clipPath', { id: 'boardClip' }, el('defs', {}));
     el('rect', { x: X(0), y: Y(L), width: L * s, height: L * s }, clip);
@@ -612,19 +504,10 @@ if (typeof document !== 'undefined') (function () {
         }
       }
     }
-    if (probeBox) {
-      const p = M.probe(S, ...probeBox), g = gClip();
-      for (const e of p.zEdges) for (const cp of edgeCopies(e)) line(cp, { stroke: col('--accent'), 'stroke-width': 7, 'stroke-linecap': 'round', opacity: 0.4 });
-      for (const e of p.xEdges) for (const cp of edgeCopies(e)) line(dualSeg(cp), { stroke: col('--accent'), 'stroke-width': 3, 'stroke-dasharray': '3 4' }, g);
-      const [i0, j0, i1, j1] = probeBox;
-      el('rect', { x: X(i0), y: Y(j1 + 1), width: (i1 - i0 + 1) * s, height: (j1 - j0 + 1) * s, fill: col('--accent'), opacity: 0.07, 'pointer-events': 'none' });
-    }
-    if (document.getElementById('showStrings').checked) {
-      const g = gClip();
-      for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
-        if (S.b[e]) line(cp, { stroke: col('--e-color'), 'stroke-width': 5, 'stroke-linecap': 'round', opacity: cp[4] ? 0.5 : 1 });
-        if (S.a[e]) line(dualSeg(cp), { stroke: col('--m-color'), 'stroke-width': 5, 'stroke-dasharray': '7 4', opacity: cp[4] ? 0.5 : 1 }, g);
-      }
+    const g = gClip();
+    for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
+      if (S.b[e]) line(cp, { stroke: col('--e-color'), 'stroke-width': 5, 'stroke-linecap': 'round', opacity: cp[4] ? 0.5 : 1 });
+      if (S.a[e]) line(dualSeg(cp), { stroke: col('--m-color'), 'stroke-width': 5, 'stroke-dasharray': '7 4', opacity: cp[4] ? 0.5 : 1 }, g);
     }
     for (let i = 0; i <= L; i++) for (let j = 0; j <= L; j++)
       el('circle', { cx: X(i), cy: Y(j), r: 2.5, fill: col('--text-muted'), opacity: (i === L || j === L) ? 0.5 : 1 });
@@ -639,16 +522,15 @@ if (typeof document !== 'undefined') (function () {
     for (const [i, j] of c.an.m)
       el('rect', { x: X(i + 0.5) - q / 2, y: Y(j + 0.5) - q / 2, width: q, height: q, rx: 3, fill: col('--m-color'), stroke: ring, 'stroke-width': 2 });
     const gHit = el('g', {});
-    const gate = ['Z', 'X', 'Y'].includes(tool);
     for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e)) {
       const ln = line(cp, { stroke: 'transparent', 'stroke-width': s * 0.34, 'data-edge': e }, gHit);
-      ln.style.cursor = gate ? 'pointer' : 'crosshair';
+      ln.style.cursor = tool === 'inspect' ? 'crosshair' : 'pointer';
+      el('title', {}, ln).textContent = edgeName(e);
     }
-    updatePanels(c);
+    update(c);
   }
 
-  // ---------- panels
-  const sym = (x) => (Math.abs(x) < 1e-9 ? '0' : (x > 0 ? '+' : '') + fmtC([x, 0]));
+  // ---------- the state, as Python prints it
   const KETS = ['00', '01', '10', '11'];
   function ketString(amps) {
     let out = '';
@@ -666,100 +548,92 @@ if (typeof document !== 'undefined') (function () {
     });
     return out;
   }
-  function netGate(c) {
-    const ph = fmtC([[1, 0], [0, 1], [-1, 0], [0, -1]][S.k]);
-    const ops = [c.wind.mY ? '<span class="ob">X</span>₁' : '', c.wind.mX ? '<span class="ob">X</span>₂' : '', c.wind.eX ? '<span class="ob">Z</span>₁' : '', c.wind.eY ? '<span class="ob">Z</span>₂' : ''].join('');
-    return (ph === '1' ? '' : ph === '−1' ? '−' : ph + ' ') + (ops || '𝟙');
+  function paulis(name, bits) {
+    const on = [...bits].flatMap((x, e) => (x ? [e] : []));
+    if (!on.length) return '';
+    if (on.length > 6) return `<i>${name}</i><sub>(${on.length} edges)</sub>`;
+    return on.map((e) => `<i>${name}</i><sub>${e}</sub>`).join('');
   }
-  function updatePanels(c) {
-    const L = M.L, dE = c.en.E - c.en.E0;
-    const na = S.a.reduce((t, x) => t + x, 0), nb = S.b.reduce((t, x) => t + x, 0);
-    const startName = { psi0: '00', s01: '01', s10: '10', s11: '11', plus0: '+0', minus0: '−0', zeroplus: '0+', plusplus: '++',
-      plusminus: '+−', plusi0: '+i,0', phip: 'Φ<sup>+</sup>', phim: 'Φ<sup>−</sup>', psip: 'Ψ<sup>+</sup>', psim: 'Ψ<sup>−</sup>',
-      random: 'start' }[document.getElementById('start').value];
-    const ops = [na ? `<i>X</i><sub>(${na} edges)</sub>` : '', nb ? `<i>Z</i><sub>(${nb} edges)</sub>` : ''].filter(Boolean).join(' ');
-    const ph = fmtC([[1, 0], [0, 1], [-1, 0], [0, -1]][S.k]);
-    document.getElementById('dMicro').innerHTML = `|ψ⟩ = ${ph === '1' ? '' : ph + ' · '}${ops ? ops + ' ' : ''}|${startName}⟩`;
-    const dec = c.gs ? null : M.decoded(S);
-    document.getElementById('dLogical').innerHTML = c.gs ? `|ψ⟩ = ${ketString(c.cur)}`
-      : `<span class="muted">anyons are out, so the qubits have no value yet. If decoded now (closest anyons joined):</span>|ψ⟩ → ${ketString(M.logical(dec, C0))}`;
-    heatPanel(c, dec);
+  function stateLine(c) {
+    const ph = fmtC(cx.ipow(S.k)), ops = [paulis('X', S.a), paulis('Z', S.b)].filter(Boolean).join(' ');
+    document.getElementById('dMicro').innerHTML = `|ψ⟩ = ${ph === '1' ? '' : ph === '−1' ? '−' : ph + ' '}${ops ? ops + ' ' : ''}|${STARTS[startKey][0]}⟩`;
+    document.getElementById('dLogical').innerHTML = c.gs ? `two qubits: <b>${ketString(c.now)}</b>`
+      : `${c.ne ? `${c.ne} e` : ''}${c.ne && c.nm ? ', ' : ''}${c.nm ? `${c.nm} m` : ''} out: the two qubits have no value until the anyons are gone`;
+    const dE = c.en.E - c.en.E0;
     document.getElementById('cE').textContent = dE ? `+${dE}` : '0';
-    document.getElementById('cNe').textContent = c.ne;
-    document.getElementById('cNm').textContent = c.nm;
-    document.getElementById('cOv').textContent = fmtC(c.ov);
-    document.getElementById('cGate').innerHTML = c.gs ? netGate(c) : '…';
-    const list = (arr) => arr.slice(0, 5).map(([i, j]) => `(${i},${j})`).join(' ') + (arr.length > 5 ? ' …' : '');
-    document.getElementById('dStab').innerHTML = c.gs
-      ? `Ground state: all ${L * L} stars A<sub>v</sub> and ${L * L} plaquettes B<sub>p</sub> are +1. The strings themselves cost nothing.`
-      : `Excited: ${c.ne ? `A<sub>v</sub> = −1 at ${list(c.an.e)}` : ''}${c.ne && c.nm ? '; ' : ''}${c.nm ? `B<sub>p</sub> = −1 at ${list(c.an.m)}` : ''}. Each costs +2, and |ψ⟩ is orthogonal to every ground state.`;
-    // trackers
-    document.getElementById('trk').innerHTML = `${track.length - 1} moves so far. Energy E = ${String(c.en.E).replace('-', '−')}, with E<sub>0</sub> = −2L² = ${String(c.en.E0).replace('-', '−')} and +2 per stabilizer at −1. Each point is one gate on one edge; hover a chart to read it.`;
-    gatesTable();
-    chart('chartE', track.map((t) => t.dE), 'E − E₀', { min: 0, step: true });
-    chart('chartO', track.map((t) => t.ov[0]), 'Re ⟨start|ψ⟩', { min: -1, max: 1, zero: true, step: true });
-    // loops
-    const lv = M.loopValues(S, C0);
-    measureTable(c);
-    const rows = [['Zx', 'Z loop along x (<span class="ob">Z</span>₁), on row'], ['Zy', 'Z loop along y (<span class="ob">Z</span>₂), on column']];
-    document.getElementById('loops').innerHTML = rows.map(([k, name]) =>
-      `<tr data-loop="${k}"><td>${name}</td><td><span class="strip">${lv[k].map((x, idx) =>
-        `<span data-loop="${k}" data-idx="${idx}" class="${x < -1e-9 ? 'neg' : (Math.abs(x) < 1e-9 ? 'zero' : '')}">${sym(x)}</span>`).join('')}</span></td></tr>`).join('');
-    document.querySelectorAll('#loops [data-idx]').forEach((sp) => {
-      sp.addEventListener('mouseenter', () => { highlight = { kind: sp.dataset.loop, idx: +sp.dataset.idx }; render(); });
-      sp.addEventListener('mouseleave', () => { highlight = null; render(); });
-    });
-    document.getElementById('loopNote').innerHTML = c.gs
-      ? 'No anyons: every cell in a line agrees. Moving a loop by one row multiplies it by the plaquettes in between, and those are all +1. So the answer is a property of the whole torus, not of any row: that is why it can store a qubit.'
-      : 'With anyons the value <b>jumps</b> between the two rows or columns where an m sits: moving the loop past an m multiplies it by that plaquette, which is −1. A loop counts the m’s it passes (X loops count e’s the same way). So with anyons on the board the qubit has no single value.';
-    // probe
-    const pt = document.getElementById('probeText'), f = (x) => (x > 0 ? '+1' : '−1');
-    if (probeBox) {
-      const p = M.probe(S, ...probeBox);
-      pt.innerHTML = `<b>Z loop around the box</b> (thick green) = ${f(p.zValue)} = (−1)<sup># m inside</sup>, with ${p.mInside} m inside.<br>`
-        + (p.hasX ? `<b>X loop just inside</b> (dotted green) = ${f(p.xValue)} = (−1)<sup># e inside</sup>, with ${p.eInside} e inside.` : 'Make the box at least 2 × 2 to fit an X loop inside.')
-        + '<br><span class="muted">A closed loop measures the anyon charge it encloses. Esc clears the box.</span>';
-    } else pt.innerHTML = 'Choose <b>Probe</b> and drag a box. It stays while you play, so you can move anyons in and out.';
-    snapshots(c);
-    missionsUpdate(c);
   }
 
-  // ---------- charts
-  function chart(id, ys, label, opt) {
-    const box = document.getElementById(id), col = css();
-    const W = opt.W || 420, H = opt.H || 92, l = 34, r = 8, t = 16, b = 18;
-    const n = ys.length, lo = opt.min ?? 0, hi = opt.max ?? Math.max(4, ...ys);
-    const px = (i) => l + (n <= 1 ? 0 : (i / (n - 1)) * (W - l - r)), py = (y) => t + (1 - (y - lo) / (hi - lo)) * (H - t - b);
-    let d = '';
-    ys.forEach((y, i) => { d += i === 0 ? `M${px(0)},${py(y)}` : (opt.step ? `H${px(i)}V${py(y)}` : `L${px(i)},${py(y)}`); });
-    const ticks = opt.zero ? [-1, 0, 1] : [0, hi];
-    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}">
-      <text x="${l}" y="11" font-size="11" fill="${col('--text-secondary')}">${label}</text>
-      ${ticks.map((v) => `<line x1="${l}" x2="${W - r}" y1="${py(v)}" y2="${py(v)}" stroke="${col('--grid-ghost')}" stroke-width="1"/>
-        <text x="${l - 5}" y="${py(v) + 4}" font-size="10" text-anchor="end" fill="${col('--text-muted')}">${String(v).replace('-', '−')}</text>`).join('')}
-      <text x="${W - r}" y="${H - 4}" font-size="10" text-anchor="end" fill="${col('--text-muted')}">${opt.xlabel ? opt.xlabel(n - 1) : 'move ' + (n - 1)}</text>
-      ${(opt.marks || []).map((i) => `<line x1="${px(i)}" x2="${px(i)}" y1="${t}" y2="${H - b}" stroke="${col('--text-primary')}" stroke-width="1.5" stroke-dasharray="3 3"/>
-        <text x="${px(i) + 4}" y="${t + 10}" font-size="10" fill="${col('--text-primary')}">logical error</text>`).join('')}
-      <path d="${d}" fill="none" stroke="${col('--accent')}" stroke-width="2" stroke-linejoin="round"/>
-      <circle cx="${px(n - 1)}" cy="${py(ys[n - 1])}" r="4" fill="${col('--accent')}" stroke="${col('--surface-1')}" stroke-width="2"/>
-      <line class="xh" y1="${t}" y2="${H - b}" stroke="${col('--text-muted')}" stroke-width="1" visibility="hidden"/>
-      <rect x="${l}" y="0" width="${W - l - r}" height="${H}" fill="transparent"/></svg><div class="tip"></div>`;
-    const sv = box.querySelector('svg'), tip = box.querySelector('.tip'), xh = box.querySelector('.xh');
-    sv.addEventListener('mousemove', (ev) => {
-      const rc = sv.getBoundingClientRect(), x = ((ev.clientX - rc.left) / rc.width) * W;
-      const i = Math.max(0, Math.min(n - 1, Math.round(((x - l) / (W - l - r)) * (n - 1)))) || 0;
-      xh.setAttribute('x1', px(i)); xh.setAttribute('x2', px(i)); xh.setAttribute('visibility', 'visible');
-      const tr = track[i];
-      tip.innerHTML = opt.tip ? opt.tip(i) : `move ${tr.n}: ${tr.label}<br>E − E₀ = ${tr.dE}, ⟨start|ψ⟩ = ${fmtC(tr.ov)}`;
-      tip.style.display = 'block'; tip.style.left = `${Math.min(rc.width - 160, (px(i) / W) * rc.width + 8)}px`; tip.style.top = '18px';
-    });
-    sv.addEventListener('mouseleave', () => { tip.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); });
+  // ---------- the mission card
+  const partOf = (idx) => missions.slice(0, idx + 1).filter((m) => m.part).pop().part;
+  function card() {
+    const dots = document.getElementById('dots');
+    dots.innerHTML = missions.map((m, n) => (m.part && n ? '<span class="sep"></span>' : '')
+      + `<button class="dot${progress[m.id] ? ' done' : ''}${n === cur ? ' current' : ''}" data-n="${n}" title="${m.text.replace(/<[^>]+>/g, '')}"></button>`).join('')
+      + `<button class="free" aria-pressed="${cur < 0}">Free play</button>`;
+    dots.querySelectorAll('.dot').forEach((b) => b.addEventListener('click', () => {
+      cur = +b.dataset.n; lessonOf = null; inspect = null;
+      if (L !== MISSION_L) start(missions[cur].start || '00', MISSION_L); else render();
+    }));
+    dots.querySelector('.free').addEventListener('click', () => { cur = -1; lessonOf = null; render(); });
+    document.getElementById('lesson').innerHTML = lessonOf ? `<b>✓ ${lessonOf.text}</b><br>${lessonOf.lesson}` : '';
+    const m = missions[cur], free = cur < 0, done = missions.filter((x) => progress[x.id]).length;
+    document.getElementById('mPart').textContent = free ? (done === missions.length ? `All ${missions.length} missions done` : 'Free play')
+      : `${cur + 1} of ${missions.length} · ${partOf(cur)}`;
+    document.getElementById('mTask').innerHTML = free ? 'Free play' : m.text;
+    document.getElementById('mHint').innerHTML = free ? 'Pick a start state, a size and a view. Every tool still works.'
+      : !progress[m.id] ? m.hint + (m.id === 'basis' ? ` (${progress.visited.size} of 4 so far)` : '')
+      : done === missions.length ? 'All missions done. Free play keeps every tool, or <button class="over">Start over</button>'
+      : 'Done. The open dots are the missions still to do.';
+    document.querySelectorAll('#mHint .over').forEach((b) => b.addEventListener('click', startOver));
+    const setup = document.getElementById('mSetup');
+    const fresh = heat.t === 0 && !S.a.some((x) => x) && !S.b.some((x) => x);
+    setup.innerHTML = free ? '' : m.start && m.start !== startKey ? `<button>Start from |${STARTS[m.start][0]}⟩</button>`
+      : m.fresh && !fresh ? '<button>Start with a fresh board</button>' : '';
+    if (setup.firstChild) setup.firstChild.addEventListener('click', () => { start(m.start || startKey); log('A fresh board: no anyons, no strings, time 0.'); });
+    document.getElementById('free').hidden = !free;
+    if (free) {
+      segment('startSeg', Object.keys(STARTS).map((k) => [k, `|${STARTS[k][0]}⟩`]), startKey, (k) => start(k));
+      segment('sizeSeg', SIZES.map((n) => [n, `${n} × ${n}`]), L, (n) => start(startKey, +n));
+      segment('viewSeg', Object.entries(VIEWS), view, (k) => { view = k; render(); });
+    }
+    const panel = free ? view : m.panel;
+    for (const [id, name] of [['pWave', 'wave'], ['pLoops', 'loops'], ['pHeat', 'heat']]) document.getElementById(id).hidden = panel !== name;
+    document.getElementById('pExp').hidden = !(panel === 'experiment' || (free && panel === 'heat'));
+    document.getElementById('xT').textContent = expT().toFixed(2);
+    return panel;
+  }
+  function startOver() {
+    for (const k of Object.keys(progress)) delete progress[k];
+    Object.assign(heat, { failedPassive: false, activeSweeps: 0 });
+    cur = 0; lessonOf = null; view = 'wave'; corrEvery = 0;
+    for (const id of ['xPlot', 'xTable', 'xNote', 'xProg']) document.getElementById(id).innerHTML = '';
+    start('00', MISSION_L); setTool('Z');
+  }
+  function segment(id, options, value, onPick) {
+    const box = document.getElementById(id);
+    box.innerHTML = options.map(([k, label]) => `<button data-k="${k}" aria-pressed="${String(k) === String(value)}">${label}</button>`).join('');
+    box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => onPick(b.dataset.k)));
+  }
+  function update(c) {
+    if (!c.gs) progress.hadAnyons = true;
+    if (c.gs && startKey === '00') progress.visited.add(stateKey(c.now));
+    const m = missions[cur];
+    if (m && !progress[m.id] && m.test(c)) {
+      progress[m.id] = true; lessonOf = m;
+      const next = missions.findIndex((x, n) => n > cur && !progress[x.id]);
+      if (next >= 0) cur = next;  // otherwise stay here, so the result of the last mission stays in view
+    }
+    stateLine(c);
+    const panel = card();
+    if (panel === 'wave') snapshots(c);
+    if (panel === 'loops') measureTable(c);
+    if (panel === 'heat') heatPanel(c);
   }
 
-  // ---------- wavefunction snapshots
+  // ---------- pictures of the wavefunction
   function resample() { samples = [0, 1, 2].map(() => M.sample(S, C0, rand)); }
   function miniBoard(smp, opts = {}) {
-    const col = css(), L = M.L, u = 160 / (L + 0.4), p0 = 0.2 * u, Xm = (i) => p0 + i * u, Ym = (j) => p0 + (L - j) * u;
+    const col = css(), u = 160 / (L + 0.4), p0 = 0.2 * u, Xm = (i) => p0 + i * u, Ym = (j) => p0 + (L - j) * u;
     let out = `<svg viewBox="0 0 ${2 * p0 + L * u} ${2 * p0 + L * u}"><defs><clipPath id="mc${opts.id}"><rect x="${Xm(0)}" y="${Ym(L)}" width="${L * u}" height="${L * u}"/></clipPath></defs>`;
     for (let e = 0; e < M.nEdges; e++) for (const cp of edgeCopies(e))
       out += `<line x1="${Xm(cp[0])}" y1="${Ym(cp[1])}" x2="${Xm(cp[2])}" y2="${Ym(cp[3])}" stroke="${col('--grid')}" stroke-width="0.8" opacity="${cp[4] ? 0.5 : 1}"/>`;
@@ -777,57 +651,58 @@ if (typeof document !== 'undefined') (function () {
     for (const [i, j] of an.e) out += `<circle cx="${Xm(i)}" cy="${Ym(j)}" r="${u * 0.14}" fill="none" stroke="${col('--e-color')}" stroke-width="1.6"/>`;
     return out + '</svg>';
   }
-  // All configurations share the size 2^{-(L^2-1)/2}; only the sign or phase carries information, so that is what is shown.
   const isNeg = (z) => Math.abs(z[1]) < 1e-9 && z[0] < 0;
   const badge = (smp) => { const t = fmtC(smp.amp); return `<span class="badge${isNeg(smp.amp) ? ' neg' : ''}">${/^[0-9]/.test(t) ? '+' + t : t}</span>`; };
-  const sizeNote = () => `Badges show each amplitude without the common factor 1/√2<sup>${M.L * M.L - 1}</sup>, which is the same for every configuration`
-    + `${document.getElementById('start').value === 'psi0' ? '' : ' (the badge includes the start-state coefficient)'}. Only the sign or phase differs.`;
   function snapshots(c) {
     const box = document.getElementById('snaps'), intro = document.getElementById('snapIntro'), verdict = document.getElementById('snapVerdict');
-    const nPics = `2<sup>${M.L * M.L - 1}</sup>`;
-    const count = (smp, i, j) => M.plaq(i, j).reduce((t, e) => t + smp.config[e], 0);
+    const n = L * L - 1, count = (smp, i, j) => M.plaq(i, j).reduce((t, e) => t + smp.config[e], 0);
     if (inspect && inspect.type === 'v') {
       const a = samples[0], b = M.flipStar(S, C0, a, inspect.i, inspect.j);
-      box.className = 'snaps pair';
-      const same0 = Math.abs(a.amp[0] - b.amp[0]) + Math.abs(a.amp[1] - b.amp[1]) < 1e-9;
-      const card = (smp, k) => `<div class="snap">${miniBoard(smp, { id: 'v' + k, star: [inspect.i, inspect.j] })}${badge(smp)}</div>`;
-      box.innerHTML = card(a, 0) + `<div class="flip">flip the<br>4 edges<br>→<b>× (${same0 ? '+1' : '−1'})</b></div>` + card(b, 1);
-      intro.innerHTML = `Two basis configurations that differ only by flipping the 4 edges at vertex (${inspect.i},${inspect.j}) (highlighted). That flip is what A<sub>v</sub> does.`;
       const same = Math.abs(a.amp[0] - b.amp[0]) + Math.abs(a.amp[1] - b.amp[1]) < 1e-9;
-      verdict.innerHTML = same ? '<b>Same amplitude</b> → A<sub>v</sub> = +1. No e here.'
-        : '<b>Opposite sign</b> → A<sub>v</sub> = −1. <b>This is the e anyon</b>: a sign twist between pictures, invisible in either one alone.';
+      const one = (smp, k) => `<div class="snap">${miniBoard(smp, { id: 'v' + k, star: [inspect.i, inspect.j] })}${badge(smp)}</div>`;
+      box.className = 'snaps pair';
+      box.innerHTML = one(a, 0) + `<div class="flip">flip the<br>4 edges<br>→<b>× (${same ? '+1' : '−1'})</b></div>` + one(b, 1);
+      intro.innerHTML = `Two pictures that differ only by flipping the 4 edges at vertex (${inspect.i}, ${inspect.j}). That flip is what A<sub>v</sub> does.`;
+      verdict.innerHTML = same ? '<b>Same amplitude</b>: A<sub>v</sub> = +1. No e here.'
+        : '<b>Opposite sign</b>: A<sub>v</sub> = −1. <b>This is the e anyon</b>, a sign twist between pictures, invisible in either one alone.';
     } else if (inspect && inspect.type === 'p') {
       box.className = 'snaps';
-      box.innerHTML = samples.map((smp, k) => `<div class="snap">${miniBoard(smp, { id: 'p' + k, plaq: [inspect.i, inspect.j] })}<div class="amp">${count(smp, inspect.i, inspect.j)} |1⟩ edges at the square</div></div>`).join('');
-      intro.innerHTML = `Three random configurations, with plaquette (${inspect.i},${inspect.j}) highlighted. B<sub>p</sub> = ∏Z counts the |1⟩ edges around it mod 2.`;
-      const odd = count(samples[0], inspect.i, inspect.j) % 2 === 1;
-      verdict.innerHTML = odd ? '<b>Odd in every picture</b> → B<sub>p</sub> = −1. <b>This is the m anyon</b>: a loop ends here, in every configuration.'
-        : '<b>Even in every picture</b> → B<sub>p</sub> = +1: loops pass through but never end here. No m.';
+      box.innerHTML = samples.map((smp, k) => `<div class="snap">${miniBoard(smp, { id: 'p' + k, plaq: [inspect.i, inspect.j] })}<div>${count(smp, inspect.i, inspect.j)} |1⟩ edges at the square</div></div>`).join('');
+      intro.innerHTML = `Three random pictures, with plaquette (${inspect.i}, ${inspect.j}) highlighted. B<sub>p</sub> = ∏Z counts its |1⟩ edges mod 2.`;
+      verdict.innerHTML = count(samples[0], inspect.i, inspect.j) % 2 ? '<b>Odd in every picture</b>: B<sub>p</sub> = −1. <b>This is the m anyon</b>, a loop that ends here, in every picture.'
+        : '<b>Even in every picture</b>: B<sub>p</sub> = +1. Loops pass through but never end here. No m.';
     } else {
       box.className = 'snaps';
       box.innerHTML = samples.map((smp, k) => `<div class="snap">${miniBoard(smp, { id: 'r' + k })}${badge(smp)}</div>`).join('');
-      intro.innerHTML = `|ψ⟩ written in the Z basis is a sum over ${c.gs ? 'closed-loop' : ''} pictures, each with the same weight: ${nPics} of them per ground-state sector. Here are 3 random ones with their amplitudes. ${c.nm ? 'Every picture has open strings ending at the m’s.' : ''} ${c.ne ? 'The e’s show up only as signs: use <b>Inspect</b> on one.' : ''}`;
+      intro.innerHTML = `In the Z basis, |ψ⟩ is an equal superposition of 2<sup>${n}</sup> ${c.nm ? '' : 'closed-loop '}pictures. Three at random, with their amplitudes in units of 2<sup>−${n}/2</sup>.`
+        + (c.nm ? ' Every picture has open strings ending at the m’s.' : '') + (c.ne ? ' The e’s show up only as signs: Inspect one.' : '');
       verdict.innerHTML = '';
     }
-    verdict.innerHTML += `<p class="small" style="margin:8px 0 0">${sizeNote()}</p>`;
   }
 
-  // ---------- missions
-  function missionsUpdate(c) {
-    if (c.gs && startIs('psi0')) progress.visited.add(stateKey(c.cur));
-    let newly = null;
-    for (const m of missions) if (!progress[m.id] && m.test(c)) { progress[m.id] = true; newly = m; }
-    const ul = document.getElementById('missions'), current = missions.find((m) => !progress[m.id]);
-    ul.innerHTML = missions.map((m) => (m.part ? `<li class="part">${m.part}</li>` : '')
-      + `<li class="${progress[m.id] ? 'done' : ''}${m === current ? ' current' : ''}">${m.text}`
-      + (m === current ? `<span class="hint">${m.hint}</span>` : '')
-      + (m.id === 'basis' && !progress.basis ? ` <span class="muted">(${progress.visited.size}/4)</span>` : '') + '</li>').join('');
-    if (newly) document.getElementById('lesson').innerHTML = `<b>✓ ${newly.text}</b><br>${newly.lesson}`;
-    const done = missions.filter((m) => progress[m.id]).length;
-    const part = current ? missions.slice(0, missions.indexOf(current) + 1).filter((m) => m.part).pop().part : '';
-    document.getElementById('mHead').textContent = current ? `Mission ${done + 1} of ${missions.length} · ${part}` : `All ${missions.length} missions done`;
-    document.getElementById('mNow').innerHTML = current ? `<b>${current.text}</b><span class="hint">${current.hint}`
-      + (current.id === 'basis' ? ` (${progress.visited.size}/4)` : '') + '</span>' : 'Keep exploring: try the Bell-state start states with the gates.';
+  // ---------- reading the qubits with loops
+  const sym = (x) => (Math.abs(x) < 1e-9 ? '0' : (x > 0 ? '+' : '') + fmtC([x, 0]));
+  function measureTable(c) {
+    const t = document.getElementById('measure'), note = document.getElementById('measureNote'), mid = Math.floor(L / 2) - 1;
+    const ROWS = [
+      { what: 'q₁, Z basis', op: '<span class="ob">Z</span>₁: Z loop along x', hl: { kind: 'Zx', idx: mid }, key: 'Z1', out: ['0', '1'] },
+      { what: 'q₂, Z basis', op: '<span class="ob">Z</span>₂: Z loop along y', hl: { kind: 'Zy', idx: mid }, key: 'Z2', out: ['0', '1'] },
+      { what: 'q₁, X basis', op: '<span class="ob">X</span>₁: X loop along y', hl: { kind: 'Xy', idx: mid }, key: 'X1', out: ['+', '−'] },
+      { what: 'q₂, X basis', op: '<span class="ob">X</span>₂: X loop along x', hl: { kind: 'Xx', idx: mid }, key: 'X2', out: ['+', '−'] },
+    ];
+    const vals = c.gs ? M.logicalExpect(c.now) : null, pct = (x) => `${Math.round(100 * x)}%`;
+    t.innerHTML = '<tr><th>qubit</th><th>loop</th><th>value</th><th>outcome</th></tr>' + ROWS.map((r, n) => {
+      if (!vals) return `<tr data-m="${n}"><td>${r.what}</td><td>${r.op}</td><td class="muted">—</td><td></td></tr>`;
+      const v = Math.abs(vals[r.key]) < 1e-9 ? 0 : vals[r.key], p = (1 + v) / 2;
+      const outcome = p > 1 - 1e-9 ? `always ${r.out[0]}` : p < 1e-9 ? `always ${r.out[1]}` : `${r.out[0]}: ${pct(p)}, ${r.out[1]}: ${pct(1 - p)}`;
+      return `<tr data-m="${n}"><td>${r.what}</td><td>${r.op}</td><td><b>${sym(v)}</b></td><td>${outcome}</td></tr>`;
+    }).join('');
+    t.querySelectorAll('tr[data-m]').forEach((tr) => {
+      tr.addEventListener('mouseenter', () => { highlight = ROWS[+tr.dataset.m].hl; render(); });
+      tr.addEventListener('mouseleave', () => { highlight = null; render(); });
+    });
+    note.innerHTML = vals ? 'Moving a loop by one row multiplies it by plaquettes, all +1, so every row gives the same answer.'
+      : '<b>Close all strings first.</b> With anyons out, a loop’s answer depends on which row it is on.';
   }
 
   // ---------- heat bath
@@ -836,156 +711,147 @@ if (typeof document !== 'undefined') (function () {
   const xorW = (a, b) => ({ mX: a.mX ^ b.mX, mY: a.mY ^ b.mY, eX: a.eX ^ b.eX, eY: a.eY ^ b.eY });
   // the slider holds log10 of the pair-creation probability p = e^{-4/T}, so T = -4 / ln p
   const temp = () => -4 / (Math.LN10 * +document.getElementById('temp').value);
-  function heatPanel(c, dec) {
-    document.getElementById('dHeat').hidden = heat.t === 0 && !heat.running;
-    document.getElementById('hT').textContent = heat.t;
-    document.getElementById('hTemp').textContent = temp().toFixed(2);
-    const w = M.windings(dec || S), ref = heat.ref || w, err = xorW(w, ref);
-    document.getElementById('hDec').innerHTML = sameW(w, ref) ? '✓ intact'
-      : `✗ logical error ${wName(err)}`;
-    if (heat.series.length) chart('chartHeat', heat.series.map((p) => p.dE), 'E − E₀ during the heat bath', {
-      min: 0, step: true, W: 900, H: 100, marks: heat.firstErr !== null ? [heat.firstErr] : [],
-      xlabel: (i) => `t = ${heat.series[i].t} sweeps`,
+  const expT = () => (cur < 0 ? temp() : 0.6);  // the mission runs at T = 0.6; free play uses the slider
+  function chart(id, ys, label, opt) {
+    const box = document.getElementById(id), col = css();
+    const W = 520, H = 130, l = 34, r = 8, t = 28, b = 20;
+    const n = ys.length, lo = 0, hi = Math.max(4, ...ys);
+    const px = (i) => l + (n <= 1 ? 0 : (i / (n - 1)) * (W - l - r)), py = (y) => t + (1 - (y - lo) / (hi - lo)) * (H - t - b);
+    let d = '';
+    ys.forEach((y, i) => { d += i === 0 ? `M${px(0)},${py(y)}` : `H${px(i)}V${py(y)}`; });
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}">
+      <text x="${l}" y="13" font-size="12" fill="${col('--text-secondary')}">${label}</text>
+      ${[0, hi].map((v) => `<line x1="${l}" x2="${W - r}" y1="${py(v)}" y2="${py(v)}" stroke="${col('--grid-ghost')}" stroke-width="1"/>
+        <text x="${l - 5}" y="${py(v) + 4}" font-size="12" text-anchor="end" fill="${col('--text-secondary')}">${v}</text>`).join('')}
+      <text x="${W - r}" y="${H - 4}" font-size="12" text-anchor="end" fill="${col('--text-secondary')}">${opt.xlabel(n - 1)}</text>
+      ${opt.marks.map((i) => `<line x1="${px(i)}" x2="${px(i)}" y1="${t}" y2="${H - b}" stroke="${col('--text-primary')}" stroke-width="1.5" stroke-dasharray="3 3"/>
+        <text x="${px(i) + 4}" y="${t + 10}" font-size="12" fill="${col('--text-primary')}">logical error</text>`).join('')}
+      <path d="${d}" fill="none" stroke="${col('--accent')}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${px(n - 1)}" cy="${py(ys[n - 1])}" r="4" fill="${col('--accent')}" stroke="${col('--surface-1')}" stroke-width="2"/>
+      <line class="xh" y1="${t}" y2="${H - b}" stroke="${col('--text-muted')}" stroke-width="1" visibility="hidden"/>
+      <rect x="${l}" y="0" width="${W - l - r}" height="${H}" fill="transparent"/></svg><div class="tip"></div>`;
+    const sv = box.querySelector('svg'), tip = box.querySelector('.tip'), xh = box.querySelector('.xh');
+    sv.addEventListener('mousemove', (ev) => {
+      const rc = sv.getBoundingClientRect(), x = ((ev.clientX - rc.left) / rc.width) * W;
+      const i = Math.max(0, Math.min(n - 1, Math.round(((x - l) / (W - l - r)) * (n - 1)))) || 0;
+      xh.setAttribute('x1', px(i)); xh.setAttribute('x2', px(i)); xh.setAttribute('visibility', 'visible');
+      tip.innerHTML = opt.tip(i); tip.style.display = 'block';
+      tip.style.left = `${Math.min(rc.width - 160, (px(i) / W) * rc.width + 8)}px`; tip.style.top = '18px';
+    });
+    sv.addEventListener('mouseleave', () => { tip.style.display = 'none'; xh.setAttribute('visibility', 'hidden'); });
+  }
+  function heatPanel(c) {
+    segment('corrSeg', CORR, corrEvery, (k) => { corrEvery = +k; render(); });
+    document.getElementById('hT').textContent = `${heat.t} sweeps`;
+    const w = M.windings(c.gs ? S : M.decoded(S)), ref = heat.ref || w;
+    document.getElementById('hDec').innerHTML = sameW(w, ref) ? '✓ intact' : `✗ logical error ${wName(xorW(w, ref))}`;
+    const box = document.getElementById('chartHeat');
+    if (!heat.series.length) { box.innerHTML = ''; return; }
+    chart('chartHeat', heat.series.map((p) => p.dE), 'E − E₀ during the heat bath', {
+      marks: heat.firstErr !== null ? [heat.firstErr] : [], xlabel: (i) => `t = ${heat.series[i].t} sweeps`,
       tip: (i) => `t = ${heat.series[i].t}: E − E₀ = ${heat.series[i].dE}${heat.series[i].err ? ', logical error if decoded' : ''}` });
   }
   function heatTick() {
     M.thermalSweep(S, temp(), rand); heat.t++;
-    const N = +document.getElementById('corrEvery').value, active = N > 0;
-    if (active) { heat.activeSweeps++; if (heat.t % N === 0) M.decode(S); }
+    const active = corrEvery > 0;
+    if (active) { heat.activeSweeps++; if (heat.t % corrEvery === 0) M.decode(S); }
     const w = M.windings(M.decoded(S)), err = !sameW(w, heat.ref);
-    if (err && heat.firstErr === null) { heat.firstErr = heat.series.length; if (!active) heat.failedPassive = true;
-      log(`<b>Logical error</b> at t = ${heat.t}: decoding now would apply ${wName(xorW(w, heat.ref))} to the register.`
-        + (active ? ` Even with correction every ${N === 1 ? 'sweep' : N + ' sweeps'}, a pair drifted too far apart (or too many appeared at once) between two corrections.${N > 1 ? ' Correcting more often helps.' : ''}`
-          : ' This is expected without correction: moving anyons costs no energy, so once pairs exist they wander until the decoder can no longer pair them correctly, and a bigger torus only offers more places for pairs to appear. Turn on <b>error correction</b> to see the protection.')); }
+    if (err && heat.firstErr === null) {
+      heat.firstErr = heat.series.length; if (!active) heat.failedPassive = true;
+      log(`<b>Logical error</b> at t = ${heat.t}: decoding now would apply ${wName(xorW(w, heat.ref))} to the qubits.`
+        + (active ? ' A pair drifted too far apart between two corrections.' : ' Moving anyons costs no energy, so pairs wander until the decoder can no longer pair them correctly.'));
+    }
     heat.series.push({ t: heat.t, dE: M.energy(S).E - M.energy(S).E0, err });
     if (heat.series.length > 600) { heat.series.shift(); if (heat.firstErr !== null) heat.firstErr = Math.max(0, heat.firstErr - 1); }
-    record(`heat bath, t = ${heat.t}`);
     resample(); render();
   }
   function startHeat() {
     if (!heat.ref) heat.ref = M.windings(M.decoded(S));
-    heat.running = true; document.getElementById('heatBtn').textContent = '❚❚ Pause';
-    document.getElementById('heatBtn').setAttribute('aria-pressed', 'true');
-    heat.timer = setInterval(heatTick, 1000 / +document.getElementById('speed').value);
+    heat.running = true; const b = document.getElementById('heatBtn'); b.textContent = '❚❚ Pause'; b.setAttribute('aria-pressed', 'true');
+    heat.timer = setInterval(heatTick, 1000 / 6);
   }
   function stopHeat() {
     heat.running = false; clearInterval(heat.timer); heat.timer = null;
     const b = document.getElementById('heatBtn'); b.textContent = '▶ Heat bath'; b.setAttribute('aria-pressed', 'false');
   }
   document.getElementById('heatBtn').addEventListener('click', () => { if (heat.running) stopHeat(); else startHeat(); render(); });
-  document.getElementById('speed').addEventListener('change', () => { if (heat.running) { stopHeat(); startHeat(); } });
-  const showT = () => { const T = temp(); document.getElementById('tempVal').textContent = T.toFixed(2);
-    document.getElementById('xT').textContent = T.toFixed(2);
-    const perSweep = (M ? M.nEdges : 72) * Math.exp(-4 / T);
-    document.getElementById('pairRate').innerHTML = `e<sup>−4/T</sup> = ${Math.exp(-4 / T).toPrecision(2)}, ≈ ${perSweep < 0.1 ? `1 new pair every ${Math.round(1 / perSweep)} sweeps` : `${perSweep.toPrecision(2)} new pairs per sweep`}`; };
-  document.getElementById('temp').addEventListener('input', () => { showT(); render(); });
-  showT();
+  const showT = () => { document.getElementById('tempVal').textContent = temp().toFixed(2); document.getElementById('xT').textContent = expT().toFixed(2); };
+  document.getElementById('temp').addEventListener('input', showT);
   document.getElementById('decodeBtn').addEventListener('click', () => {
     const an = M.anyons(S); if (an.e.length + an.m.length === 0) { log('No anyons to decode.'); return; }
-    history.push({ S: M.copy(S), n: track.length });
-    M.decode(S); progress.decodedWithAnyons = true;
-    record('decode'); log(`<b>Decoded</b>: joined ${an.e.length / 2} e pair(s) and ${an.m.length / 2} m pair(s) by shortest strings.`);
+    history.push(M.copy(S)); M.decode(S); progress.decodedWithAnyons = true;
+    log(`<b>Decoded</b>: joined ${an.e.length / 2} e pair(s) and ${an.m.length / 2} m pair(s) by shortest strings.`);
     resample(); render();
   });
-  // memory experiment: time to the first logical error, without and with correction
+  // memory experiment: time to the first logical error, without correction and with correction every sweep
+  function expPlot(res, sizes, maxS) {
+    const box = document.getElementById('xPlot'), col = css();
+    const W = 520, H = 236, l = 46, r = 104, t = 16, b = 40, lo = 1, hi = Math.log10(maxS);
+    const px = (Lx) => l + ((Lx - sizes[0]) / (sizes[sizes.length - 1] - sizes[0])) * (W - l - r);
+    const py = (y) => t + (1 - (Math.log10(Math.max(y, 10)) - lo) / (hi - lo)) * (H - t - b);
+    const series = [['p', 'no correction', col('--text-secondary')], ['a', 'with correction', col('--accent')]];
+    let out = `<svg viewBox="0 0 ${W} ${H}">`;
+    for (let k = 1; k <= hi; k++) out += `<line x1="${l}" x2="${W - r}" y1="${py(10 ** k)}" y2="${py(10 ** k)}" stroke="${col('--grid-ghost')}"/>`
+      + `<text x="${l - 6}" y="${py(10 ** k) + 4}" font-size="12" text-anchor="end" fill="${col('--text-secondary')}">${(10 ** k).toLocaleString('en-CA')}</text>`;
+    for (const Lx of sizes) out += `<text x="${px(Lx)}" y="${H - b + 16}" font-size="12" text-anchor="middle" fill="${col('--text-secondary')}">${Lx}</text>`;
+    out += `<text x="${(l + W - r) / 2}" y="${H - 2}" font-size="12" text-anchor="middle" fill="${col('--text-secondary')}">L (an L × L torus)</text>`
+      + `<text x="${l}" y="${t - 3}" font-size="12" fill="${col('--text-secondary')}">mean sweeps to the first logical error</text>`;
+    for (const [key, label, c] of series) {
+      const pts = sizes.filter((Lx) => res[Lx + key] && res[Lx + key].n).map((Lx) => [Lx, res[Lx + key]]);
+      if (!pts.length) continue;
+      out += `<path d="${pts.map(([Lx, o], n) => `${n ? 'L' : 'M'}${px(Lx)},${py(o.sum / o.n)}`).join('')}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;
+      for (const [Lx, o] of pts) out += `<circle cx="${px(Lx)}" cy="${py(o.sum / o.n)}" r="4.5" fill="${o.capped ? col('--surface-1') : c}" stroke="${o.capped ? c : col('--surface-1')}" stroke-width="2"`
+        + ` data-tip="${Lx} × ${Lx}, ${label}: ${Math.round(o.sum / o.n).toLocaleString('en-CA')} sweeps${o.capped ? ` (${o.capped} of ${o.n} runs reached ${maxS.toLocaleString('en-CA')}, so at least this)` : ''}"/>`;
+      const [Lx, o] = pts[pts.length - 1];
+      out += `<text x="${px(Lx) + 9}" y="${py(o.sum / o.n) + 4}" font-size="12" fill="${col('--text-primary')}">${label}</text>`;
+    }
+    box.innerHTML = out + '</svg><div class="tip"></div>';
+    const tip = box.querySelector('.tip');
+    box.querySelectorAll('circle[data-tip]').forEach((dot) => {
+      dot.addEventListener('mouseenter', () => { const rc = box.getBoundingClientRect(), dr = dot.getBoundingClientRect();
+        tip.textContent = dot.dataset.tip; tip.style.display = 'block';
+        tip.style.left = `${Math.max(0, Math.min(rc.width - 300, dr.left - rc.left - 60))}px`; tip.style.top = `${dr.top - rc.top - 30}px`; });
+      dot.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    });
+  }
   function runExperiment() {
-    const T = temp(), runs = +document.getElementById('xRuns').value, maxS = +document.getElementById('xMax').value;
-    const sizes = [4, 6, 8, 10, 12, 14], jobs = [], N = +document.getElementById('corrEvery').value || 1;
-    for (const L of sizes) for (const active of [false, true]) for (let r = 0; r < runs; r++) jobs.push({ L, active });
+    const T = expT(), runs = 20, maxS = 20000, sizes = [4, 6, 8, 10, 12, 14], jobs = [];
+    for (const Lx of sizes) for (const active of [false, true]) for (let r = 0; r < runs; r++) jobs.push({ Lx, active });
     const res = {}, xr = makeRng(2024), btn = document.getElementById('xRun'); btn.disabled = true;
-    let jIdx = 0, cur = null;
+    let jIdx = 0, job = null;
     const table = () => {
       const fmt = (o) => (!o || !o.n ? '…' : `${Math.round(o.sum / o.n)}${o.capped ? ` <span class="muted">(${o.capped} reached ${maxS})</span>` : ''}`);
-      document.getElementById('xTable').innerHTML = `<tr><th>L</th><th>no correction</th><th>correct every ${N === 1 ? 'sweep' : N + ' sweeps'}</th></tr>`
-        + sizes.map((L) => `<tr><td>${L}</td><td>${fmt(res[L + 'p'])}</td><td>${fmt(res[L + 'a'])}</td></tr>`).join('');
+      document.getElementById('xTable').innerHTML = '<tr><th>torus</th><th>no correction</th><th>correction every sweep</th></tr>'
+        + sizes.map((Lx) => `<tr><td>${Lx} × ${Lx}</td><td>${fmt(res[Lx + 'p'])}</td><td>${fmt(res[Lx + 'a'])}</td></tr>`).join('');
+      expPlot(res, sizes, maxS);
     };
     table();
     const work = () => {
       const t0 = performance.now();
       while (performance.now() - t0 < 25 && jIdx < jobs.length) {
-        if (!cur) { const j = jobs[jIdx]; const Mx = makeModel(j.L); cur = { ...j, Mx, s: Mx.fresh(), t: 0 }; }
-        const { Mx, s } = cur;
-        Mx.thermalSweep(s, T, xr); cur.t++;
-        if (cur.active && cur.t % N === 0) Mx.decode(s);
-        const w = Mx.windings(Mx.decoded(s)), failed = w.mX || w.mY || w.eX || w.eY;
-        if (failed || cur.t >= maxS) {
-          const k = cur.L + (cur.active ? 'a' : 'p'); res[k] = res[k] || { sum: 0, n: 0, capped: 0 };
-          res[k].sum += cur.t; res[k].n++; if (!failed) res[k].capped++;
-          cur = null; jIdx++;
+        if (!job) { const j = jobs[jIdx], Mx = makeModel(j.Lx); job = { ...j, Mx, s: Mx.fresh(), t: 0 }; }
+        const { Mx, s: sx } = job;
+        Mx.thermalSweep(sx, T, xr); job.t++;
+        if (job.active) Mx.decode(sx);
+        const w = Mx.windings(Mx.decoded(sx)), failed = w.mX || w.mY || w.eX || w.eY;
+        if (failed || job.t >= maxS) {
+          const k = job.Lx + (job.active ? 'a' : 'p'); res[k] = res[k] || { sum: 0, n: 0, capped: 0 };
+          res[k].sum += job.t; res[k].n++; if (!failed) res[k].capped++;
+          job = null; jIdx++;
         }
       }
-      document.getElementById('xProg').textContent = jIdx < jobs.length ? `running… ${Math.round(100 * jIdx / jobs.length)}%` : 'done';
+      document.getElementById('xProg').textContent = jIdx < jobs.length ? `running… ${Math.round(100 * jIdx / jobs.length)}%` : '';
       table();
       if (jIdx < jobs.length) setTimeout(work, 0);
-      else { btn.disabled = false; progress.experimentDone = true;
-        document.getElementById('xNote').innerHTML = `Mean time to the first logical error, in sweeps, at T = ${T.toFixed(2)} (${runs} runs each). A run that reached ${maxS} sweeps without an error counts as ${maxS}, so those means are lower bounds.`;
-        render(); }
+      else {
+        btn.disabled = false; progress.experimentDone = true;
+        document.getElementById('xNote').innerHTML = `Mean sweeps to the first logical error at T = ${T.toFixed(2)}, ${runs} runs each. Runs that reached ${maxS} sweeps count as ${maxS}, so those means (hollow markers) are lower bounds.`;
+        render();
+      }
     };
     work();
   }
   document.getElementById('xRun').addEventListener('click', runExperiment);
-
-  // ---------- measurement
-  function measureTable(c) {
-    const t = document.getElementById('measure'), note = document.getElementById('measureNote');
-    const mid = Math.max(0, Math.floor(M.L / 2) - 1);
-    const ROWS = [
-      { what: 'q₁ in the Z basis', op: '<span class="ob">Z</span>₁ = Z loop along x', hl: [{ kind: 'Zx', idx: mid }], key: 'Z1', out: ['q₁ = 0', 'q₁ = 1'] },
-      { what: 'q₂ in the Z basis', op: '<span class="ob">Z</span>₂ = Z loop along y', hl: [{ kind: 'Zy', idx: mid }], key: 'Z2', out: ['q₂ = 0', 'q₂ = 1'] },
-      { what: 'q₁ in the X basis', op: '<span class="ob">X</span>₁ = X loop along y', hl: [{ kind: 'Xy', idx: mid }], key: 'X1', out: ['q₁ = +', 'q₁ = −'] },
-      { what: 'q₂ in the X basis', op: '<span class="ob">X</span>₂ = X loop along x', hl: [{ kind: 'Xx', idx: mid }], key: 'X2', out: ['q₂ = +', 'q₂ = −'] },
-      { what: 'Do q₁ and q₂ agree (Z)?', op: '<span class="ob">Z</span>₁<span class="ob">Z</span>₂', hl: [{ kind: 'Zx', idx: mid }, { kind: 'Zy', idx: mid }], key: 'ZZ', out: ['same', 'opposite'] },
-      { what: 'Do q₁ and q₂ agree (X)?', op: '<span class="ob">X</span>₁<span class="ob">X</span>₂', hl: [{ kind: 'Xy', idx: mid }, { kind: 'Xx', idx: mid }], key: 'XX', out: ['same', 'opposite'] },
-    ];
-    let vals = null, corr = null;
-    if (c.gs) { vals = M.logicalExpect(c.cur); corr = M.logicalCorr(c.cur); Object.assign(vals, corr); }
-    const pct = (x) => `${Math.round(100 * x)}%`;
-    t.innerHTML = '<tr><th>measure</th><th>loop operator</th><th>⟨value⟩</th><th>outcome +1</th><th>outcome −1</th></tr>' + ROWS.map((r, n) => {
-      if (!vals) return `<tr data-m="${n}"><td>${r.what}</td><td>${r.op}</td><td class="muted">—</td><td></td><td></td></tr>`;
-      const v = Math.abs(vals[r.key]) < 1e-9 ? 0 : vals[r.key], p = (1 + v) / 2;
-      return `<tr data-m="${n}"><td>${r.what}</td><td>${r.op}</td><td><b>${sym(v)}</b></td>`
-        + `<td>${r.out[0]}: ${pct(p)}</td><td>${r.out[1]}: ${pct(1 - p)}</td></tr>`;
-    }).join('');
-    t.querySelectorAll('tr[data-m]').forEach((tr) => {
-      tr.addEventListener('mouseenter', () => { highlight = ROWS[+tr.dataset.m].hl; render(); });
-      tr.addEventListener('mouseleave', () => { highlight = null; render(); });
-    });
-    if (!vals) { note.innerHTML = '<b>Close all strings first.</b> With anyons on the board, the loop’s answer depends on which row you put it on, so the qubits have no value (see the note below).'; return; }
-    const C = corr.C;
-    note.innerHTML = `Probability of +1 = (1 + ⟨value⟩)/2. `
-      + (C > 1 - 1e-9 ? `<b>Entangled (Bell state), concurrence C = 1.</b> Each qubit alone is a coin flip, yet the pair is perfectly correlated in both Z and X. No product state can do that.`
-        : C > 1e-9 ? `<b>Partly entangled</b>: concurrence C = ${C.toFixed(2)} (0 = product state, 1 = Bell state).`
-        : '<b>Not entangled</b> (concurrence C = 0): the two qubits can be described separately.');
-  }
-
-  // ---------- logical gates
-  const GATES = [
-    { name: '<span class="ob">X</span>₁', gate: 'X', kind: 'Xy', move: 'drag an m around the torus along y', effect: 'flips q₁' },
-    { name: '<span class="ob">X</span>₂', gate: 'X', kind: 'Xx', move: 'drag an m around the torus along x', effect: 'flips q₂' },
-    { name: '<span class="ob">Z</span>₁', gate: 'Z', kind: 'Zx', move: 'drag an e around the torus along x', effect: '−1 on the q₁ = 1 part' },
-    { name: '<span class="ob">Z</span>₂', gate: 'Z', kind: 'Zy', move: 'drag an e around the torus along y', effect: '−1 on the q₂ = 1 part' },
-  ];
-  const gatePath = (g) => ({ idx: Math.max(0, Math.floor(M.L / 2) - 1), edges: { Zx: M.zRow, Xx: M.xRow, Zy: M.zCol, Xy: M.xCol }[g.kind](Math.max(0, Math.floor(M.L / 2) - 1)) });
-  function gatesTable() {
-    const t = document.getElementById('gates');
-    if (t.dataset.built === String(M.L)) return;
-    t.dataset.built = String(M.L);
-    t.innerHTML = '<tr><th>gate</th><th>on the board</th><th>effect</th><th></th></tr>' + GATES.map((g, n) =>
-      `<tr data-gate="${n}"><td style="font-size:17px"><b>${g.name}</b></td><td>${g.move}<br><span class="muted">${g.gate} on ${M.L} edges</span></td><td>${g.effect}</td><td><button data-apply="${n}">Apply</button></td></tr>`).join('');
-    t.querySelectorAll('tr[data-gate]').forEach((tr) => {
-      const g = GATES[+tr.dataset.gate];
-      tr.addEventListener('mouseenter', () => { highlight = { kind: g.kind, idx: gatePath(g).idx }; render(); });
-      tr.addEventListener('mouseleave', () => { highlight = null; render(); });
-    });
-    t.querySelectorAll('button[data-apply]').forEach((b) => b.addEventListener('click', () => applyGate(GATES[+b.dataset.apply])));
-  }
-  function applyGate(g) {
-    history.push({ S: M.copy(S), n: track.length }); if (history.length > 500) history.shift();
-    for (const e of gatePath(g).edges) M.apply(S, g.gate, e);
-    record(`${g.name} (${g.gate} on a full loop)`);
-    log(`<b>${g.name}</b>: ${g.gate} on ${M.L} edges, a closed loop around the torus. No anyons are left behind.`);
-    resample(); render();
-  }
 
   // ---------- interaction
   const log = (html) => { document.getElementById('log').innerHTML = html; };
@@ -994,75 +860,60 @@ if (typeof document !== 'undefined') (function () {
     for (const k of ['e', 'm']) { const b = before[k].length, a = after[k].length;
       if (a > b) parts.push(`created ${a - b} ${k}`); else if (a < b) parts.push(`annihilated ${b - a} ${k}`);
       else if (a > 0 && JSON.stringify(before[k]) !== JSON.stringify(after[k])) parts.push(`moved an ${k}`); }
-    const { i, j, horizontal } = M.edgeInfo(e);
-    return `<b>${gate}</b> on edge ${horizontal ? 'h' : 'v'}(${i},${j}): ${parts.length ? parts.join(', ') : 'no anyons changed'}.`;
+    return `<b>${gate}</b> on ${edgeName(e)}: ${parts.length ? parts.join(', ') : 'no anyons changed'}.`;
   }
   function applyEdge(e) {
     if (drag.done.has(e)) return;
     drag.done.add(e);
-    const before = M.anyons(S); M.apply(S, tool, e); const after = M.anyons(S);
-    const msg = describe(before, after, tool, e); log(msg);
-    const { i, j, horizontal } = M.edgeInfo(e);
-    record(`${tool} on ${horizontal ? 'h' : 'v'}(${i},${j})`);
+    const before = M.anyons(S); M.apply(S, tool, e);
+    log(describe(before, M.anyons(S), tool, e));
     resample(); render();
   }
   function boardPoint(evt) { const pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
-  function plaqAt(evt) { const p = boardPoint(evt), cl = (x) => Math.max(0, Math.min(M.L - 1, x));
-    return [cl(Math.floor((p.x - X(0)) / s)), cl(Math.floor((Y(0) - p.y) / s))]; }
   function siteAt(evt) {
     const p = boardPoint(evt), fx = (p.x - X(0)) / s, fy = (Y(0) - p.y) / s;
     const vi = Math.round(fx), vj = Math.round(fy), dv = Math.hypot(fx - vi, fy - vj);
     const pi = Math.floor(fx), pj = Math.floor(fy), dp = Math.hypot(fx - pi - 0.5, fy - pj - 0.5);
-    const L = M.L, m = (x) => ((x % L) + L) % L, an = M.anyons(S);
+    const m = (x) => ((x % L) + L) % L, an = M.anyons(S);
     if (dv <= dp) { const i = m(vi), j = m(vj); return { type: 'v', i, j, hasAnyon: an.e.some(([a, b]) => a === i && b === j) }; }
     const i = m(pi), j = m(pj); return { type: 'p', i, j, hasAnyon: an.m.some(([a, b]) => a === i && b === j) };
   }
-  function setProbe(a, b) { const lim = M.L - 2;
-    let i0 = Math.min(a[0], b[0]), i1 = Math.max(a[0], b[0]), j0 = Math.min(a[1], b[1]), j1 = Math.max(a[1], b[1]);
-    probeBox = [i0, j0, Math.min(i1, i0 + lim), Math.min(j1, j0 + lim)]; }
-
   svg.addEventListener('pointerdown', (evt) => {
     evt.preventDefault(); svg.setPointerCapture(evt.pointerId);
-    if (tool === 'probe') { drag = { probeStart: plaqAt(evt) }; setProbe(drag.probeStart, drag.probeStart); render(); return; }
     if (tool === 'inspect') { inspect = siteAt(evt); resample(); render(); return; }
-    history.push({ S: M.copy(S), n: track.length }); if (history.length > 500) history.shift();
+    history.push(M.copy(S)); if (history.length > 500) history.shift();
     drag = { done: new Set() };
     const t = document.elementFromPoint(evt.clientX, evt.clientY);
     if (t && t.dataset && t.dataset.edge !== undefined) applyEdge(+t.dataset.edge);
   });
   svg.addEventListener('pointermove', (evt) => {
     if (!drag) return;
-    if (drag.probeStart) { setProbe(drag.probeStart, plaqAt(evt)); render(); return; }
     const t = document.elementFromPoint(evt.clientX, evt.clientY);
     if (t && t.dataset && t.dataset.edge !== undefined) applyEdge(+t.dataset.edge);
   });
-  const endDrag = () => { if (drag && drag.done && drag.done.size === 0) history.pop(); drag = null; };
+  const endDrag = () => { if (drag && drag.done.size === 0) history.pop(); drag = null; };
   svg.addEventListener('pointerup', endDrag); svg.addEventListener('pointercancel', endDrag);
 
-  function showTab(name) {
-    document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-    document.querySelectorAll('.tabpanel').forEach((p) => { p.hidden = p.dataset.panel !== name; });
+  function setTool(t) {
+    tool = t; if (t !== 'inspect') inspect = null;
+    if (t === 'inspect' && cur < 0) view = 'wave';
+    document.querySelectorAll('button.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
+    render();
   }
-  document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-  function setTool(t) { tool = t; if (t === 'inspect') showTab('wave'); if (t === 'probe') showTab('probe'); document.querySelectorAll('button.tool').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
-    if (t !== 'inspect') inspect = null; render(); }
   document.querySelectorAll('button.tool').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
-  function undo() { if (!history.length) return; const h = history.pop(); S = h.S; track.length = h.n; resample(); log('Undone.'); render(); }
+  function undo() { if (!history.length) return; S = history.pop(); resample(); log('Undone.'); render(); }
   document.getElementById('undo').addEventListener('click', undo);
-  document.getElementById('reset').addEventListener('click', () => { start(M.L); log('Reset to the start state.'); });
-  document.getElementById('size').addEventListener('change', (e) => { start(+e.target.value); showT(); });
-  document.getElementById('start').addEventListener('change', () => { start(M.L); log('New start state. The board is reset.'); });
-  document.getElementById('showStrings').addEventListener('change', render);
+  document.getElementById('reset').addEventListener('click', () => { start(startKey); log('Reset to the start state.'); });
   document.getElementById('resample').addEventListener('click', () => { resample(); render(); });
+  document.getElementById('startOver').addEventListener('click', startOver);
   document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'SELECT') return;
     if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
-    const map = { 1: 'Z', 2: 'X', 3: 'Y', 4: 'inspect', 5: 'probe' };
+    const map = { 1: 'Z', 2: 'X', 3: 'inspect' };
     if (map[e.key]) setTool(map[e.key]);
-    if (e.key === 'Escape') { probeBox = null; inspect = null; render(); }
+    if (e.key === 'Escape') { inspect = null; render(); }
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
-  start(6);
+  start('00');
   showT();
 })();
 </script>

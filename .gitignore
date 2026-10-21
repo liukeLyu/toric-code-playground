@@ -8,3 +8,9 @@ __pycache__/
 
 # Local Claude instructions, never commit
 CLAUDE.md
+
+# The earlier version of the app, kept locally for comparison
+app/toric_code_playground_old.html
+
+# Images for sharing the project, kept locally
+showcase/
