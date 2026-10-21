@@ -93,6 +93,11 @@ button.tool[data-tool="inspect"][aria-pressed="true"] { border-color: var(--acce
 .part { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); }
 .task { font-size: 22px; font-weight: 650; margin: 4px 0 4px; line-height: 1.3; letter-spacing: -.01em; }
 .hint { color: var(--text-primary); font-size: 16px; }
+.rules { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 14px; margin: 14px 0 0; padding: 10px 14px; font-size: 15px;
+  background: var(--surface-0); border-radius: 8px; }
+.rules .eq { font: 19px "Times New Roman", Georgia, serif; white-space: nowrap; }
+.rules .ok { color: var(--accent); font-weight: 700; }
+.rules .why { color: var(--text-secondary); }
 .setup { margin-top: 10px; }
 .lesson { border-left: 3px solid var(--accent); padding: 4px 14px; margin: 0 0 20px; font-size: 15px; }
 .lesson:empty { display: none; }
@@ -170,6 +175,7 @@ svg#torus.turning { cursor: grabbing; }
       <div class="part" id="mPart"></div>
       <div class="task" id="mTask"></div>
       <div class="hint" id="mHint"></div>
+      <div class="rules" id="mRules" hidden></div>
       <div class="setup" id="mSetup"></div>
       <div class="row" id="free" hidden>
         <span>Start</span><span class="seg" id="startSeg"></span>
@@ -442,6 +448,10 @@ if (typeof document !== 'undefined') (function () {
       hint: 'Z and then X on the same edge makes an e pair and an m pair around it. Fusion view is below the board (key 4).',
       lesson: 'The energy does not drop: an e and an m never cancel. Their fusion e × m is the fourth anyon, ε, drawn half orange, half blue, with the blue half towards its m. A Z on one of its edges moves the e part, an X the m part. With 1, e, m and ε the list is complete: any cluster of anyons, seen from far away, is one of these four.',
       test: (c) => fusion && c.fz.eps.length > 0 },
+    { id: 'epsEps', panel: 'wave', start: '00', text: 'Fuse two ε’s: pull them at least 3 steps apart, then bring them back together.',
+      hint: 'Z and then X on one edge makes two ε’s. Move one in small steps: a Z moves its e part, an X its m part. When a step pulls the two parts apart, the next one joins them again.',
+      lesson: 'Nothing is left: ε × ε = (e × e)(m × m) = 1. The e parts annihilate each other and so do the m parts. With e × e = m × m = 1 this also fixes the rest: e × ε = m and m × ε = e.',
+      test: (c) => progress.farEps && c.gs },
     { id: 'spin', panel: 'wave', start: '00', text: 'Turn an ε once around: keep its e still, walk its m through the 4 squares around it, then close every string.',
       hint: 'Make an e pair and an m pair apart from each other. Bring one m next to one e, step it once around that e with X on the edges at the e’s vertex, then annihilate everything.',
       lesson: '|ψ⟩ = −|00⟩. A full turn of ε multiplied the state by −1: this is the e–m braiding phase again, now a property of a single particle. A boson turned by 360° gets no sign. For anyons the phase from swapping two identical particles equals the phase from one full turn, so two ε’s that swap places also pick up −1: e and m are bosons, but their bound state ε is a fermion.',
@@ -477,6 +487,15 @@ if (typeof document !== 'undefined') (function () {
       lesson: 'Without correction a bigger torus does not help. With correction the memory time grows rapidly with L: topological protection needs active error correction.',
       test: () => progress.experimentDone },
   ];
+  // the fusion rules, each with the mission that shows it (none: it follows from the others)
+  const FUSION_RULES = [
+    ['<i>e</i> × <i>e</i> = 1', 'fuseE', 'two e’s annihilate'],
+    ['<i>m</i> × <i>m</i> = 1', 'fuseE', 'the same with X'],
+    ['<i>e</i> × <i>m</i> = <i>ε</i>', 'fuseEM', 'they do not cancel: a new anyon'],
+    ['<i>ε</i> × <i>ε</i> = 1', 'epsEps', 'e’s cancel, m’s cancel'],
+    ['<i>e</i> × <i>ε</i> = <i>m</i>', null, 'follows: e × e × m = m'],
+    ['<i>m</i> × <i>ε</i> = <i>e</i>', null, 'follows: m × e × m = e'],
+  ];
   const heat = { running: false, timer: null, t: 0, series: [], ref: null, failedPassive: false, activeSweeps: 0, firstErr: null };
 
   let s, pad, X, Y;
@@ -487,7 +506,7 @@ if (typeof document !== 'undefined') (function () {
   function start(key, size = L) {
     startKey = key; L = size; M = makeModel(L);
     document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
-    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false;
+    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.farEps = false;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
     geometry(); resample(); render();
     log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
@@ -710,6 +729,10 @@ if (typeof document !== 'undefined') (function () {
       : !progress[m.id] ? m.hint + (m.id === 'basis' ? ` (${progress.visited.size} of 4 so far)` : '')
       : done === missions.length ? 'All missions done. Free play keeps every tool, or <button class="over">Start over</button>'
       : 'Done. The open dots are the missions still to do.';
+    const rules = document.getElementById('mRules');
+    rules.hidden = free || partOf(cur) !== 'Fusion';
+    if (!rules.hidden) rules.innerHTML = FUSION_RULES.map(([eq, id, why]) =>
+      `<span class="ok">${id && progress[id] ? '✓' : ''}</span><span class="eq">${eq}</span><span class="why">${why}</span>`).join('');
     document.querySelectorAll('#mHint .over').forEach((b) => b.addEventListener('click', startOver));
     const setup = document.getElementById('mSetup');
     const fresh = heat.t === 0 && !S.a.some((x) => x) && !S.b.some((x) => x);
@@ -744,6 +767,7 @@ if (typeof document !== 'undefined') (function () {
     if (!c.gs) progress.hadAnyons = true;
     if (c.fz.eps.length) progress.hadEps = true;
     if (missions[cur] && missions[cur].id === 'fuseE' && c.ne >= 4) progress.fourE = true;
+    if (missions[cur] && missions[cur].id === 'epsEps' && c.fz.eps.some((p, a) => c.fz.eps.some((q, b) => b > a && M.torusDist(p, q) >= 3))) progress.farEps = true;
     if (c.gs && startKey === '00') progress.visited.add(stateKey(c.now));
     const m = missions[cur];
     if (m && !progress[m.id] && m.test(c)) {
