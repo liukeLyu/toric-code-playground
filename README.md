@@ -49,3 +49,5 @@ Conventions: edge $h(i, j) = 2(jL + i)$ joins vertex $(i, j)$ to $(i+1, j)$ and 
 * E. Dennis, A. Kitaev, A. Landahl, J. Preskill, *Topological quantum memory*, [arXiv:quant-ph/0110143](https://arxiv.org/abs/quant-ph/0110143); [J. Math. Phys. 43, 4452 (2002)](https://doi.org/10.1063/1.1499754)
 * C. Nayak, S. H. Simon, A. Stern, M. Freedman, S. Das Sarma, *Non-Abelian anyons and topological quantum computation*, [arXiv:0707.1889](https://arxiv.org/abs/0707.1889); [Rev. Mod. Phys. 80, 1083 (2008)](https://doi.org/10.1103/RevModPhys.80.1083)
 * R. Alicki, M. Horodecki, P. Horodecki, R. Horodecki, *On thermal stability of topological qubit in Kitaev's 4D model*, [arXiv:0811.0033](https://arxiv.org/abs/0811.0033); [Open Syst. Inf. Dyn. 17, 1 (2010)](https://doi.org/10.1142/S1230161210000023)
+
+If this project helped you, you can [sponsor me on GitHub](https://github.com/sponsors/liukeLyu) or on [爱发电 Afdian](https://afdian.com/a/liukelyu) ♥
