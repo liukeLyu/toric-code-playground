@@ -170,3 +170,13 @@ def test_swapping_two_epsilons_gives_minus_one_and_two_e_nothing():
         assert out[kind]["same"]  # the board after the swap is the board before it
     assert out["Z"]["k"] == out["Z"]["k0"]  # e is a boson
     assert (out["eps"]["k"] - out["eps"]["k0"]) % 4 == 2  # ε is a fermion: |ψ⟩ -> -|ψ⟩
+
+
+def test_page_script_parses(tmp_path):
+    """Every <script> of the page, not only the model, must be valid JavaScript."""
+    scripts = re.findall(r"<script[^>]*>(.*?)</script>", APP.read_text(), re.S)
+    assert scripts
+    for n, script in enumerate(scripts):
+        path = tmp_path / f"page{n}.js"
+        path.write_text(script)
+        subprocess.run(["node", "--check", str(path)], capture_output=True, text=True, check=True)
