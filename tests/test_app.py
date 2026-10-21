@@ -142,3 +142,31 @@ def test_move_eps_slides_an_epsilon_and_keeps_its_shape():
         assert moved in case["after"]["eps"], case  # the same ε, one step along, with its m on the same side
         n = lambda f: (len(f["eps"]), len(f["e"]), len(f["m"]))  # noqa: E731
         assert n(case["after"]) == n(case["before"])
+
+
+SWAP_DRIVER = r"""
+const M = makeModel(6), out = {};
+// A = (2, 2), O = (3, 2), B = (4, 2), side track C = (3, 3): A -> O -> C, B -> O -> A, C -> O -> B
+const legs = [M.h(2, 2), M.v(3, 2), M.h(3, 2), M.h(2, 2), M.v(3, 2), M.h(3, 2)];
+for (const kind of ['Z', 'eps']) {
+  const s = M.fresh();
+  M.apply(s, 'Z', M.h(2, 2)); M.apply(s, 'Z', M.h(3, 2));
+  if (kind === 'eps') { M.apply(s, 'X', M.v(3, 2)); M.apply(s, 'X', M.v(4, 2)); }
+  const s0 = M.copy(s);
+  let last = null;
+  for (const ed of legs) last = M.act(s, kind, ed, last);
+  out[kind] = { same: s.a.every((x, n) => x === s0.a[n]) && s.b.every((x, n) => x === s0.b[n]), k0: s0.k, k: s.k };
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def test_swapping_two_epsilons_gives_minus_one_and_two_e_nothing():
+    html = APP.read_text()
+    model = re.search(r"// MODEL-BEGIN.*?// MODEL-END", html, re.S).group(0)
+    out = json.loads(subprocess.run(["node", "-e", model + "\n" + SWAP_DRIVER], capture_output=True, text=True,
+                                    check=True).stdout)
+    for kind in ("Z", "eps"):
+        assert out[kind]["same"]  # the board after the swap is the board before it
+    assert out["Z"]["k"] == out["Z"]["k0"]  # e is a boson
+    assert (out["eps"]["k"] - out["eps"]["k0"]) % 4 == 2  # ε is a fermion: |ψ⟩ -> -|ψ⟩

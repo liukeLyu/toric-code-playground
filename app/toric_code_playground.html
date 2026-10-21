@@ -456,6 +456,13 @@ if (typeof document !== 'undefined') (function () {
   const ePair = (M, i, j) => [['Z', M.h(i, j)], ['Z', M.h(i + 1, j)]];
   const mPair = (M, i, j) => [['X', M.v(i + 1, j)], ['X', M.v(i + 2, j)]];
   const epsPair = (M, i, j) => [...ePair(M, i, j), ...mPair(M, i, j)];
+  // the swap missions: P1 at A = (i, j) and P2 at B = (i + 2, j), a free vertex O between them and a side track C above O.
+  // P1 goes A -> O -> C, P2 goes B -> O -> A, P1 goes C -> O -> B: the two have swapped, and every string is as before.
+  const swapPath = (M, i, j, tool) => [M.h(i, j), M.v(i + 1, j), M.h(i + 1, j), M.h(i, j), M.v(i + 1, j), M.h(i + 1, j)].map((ed) => [tool, ed]);
+  const SWAP_AT = [[[2, 2], [4, 2]], [[3, 2], [4, 2]], [[3, 3], [4, 2]], [[3, 3], [3, 2]], [[3, 3], [2, 2]], [[3, 2], [2, 2]], [[4, 2], [2, 2]]];
+  const swapLabels = (k, kind) => (SWAP_AT[k] || []).map(([i, j], n) => [kind, i, j, (kind === 'e' ? 'e' : 'ε') + '₁₂'[n]]);
+  const SWAP_STEPS = ['P₁ steps into the middle.', 'P₁ steps up the side track, out of the way.', 'P₂ steps into the middle.',
+    'P₂ steps on to where P₁ started.', 'P₁ comes back down into the middle.', 'P₁ steps on to where P₂ started. Then compare the board and |ψ⟩ with the start.'];
   const missions = [
     { part: 'Anyons', id: 'pair', panel: 'wave', start: '00', text: 'Create a pair of e anyons.', hint: 'Z is selected. Click any edge and watch the energy.',
       lesson: 'One Z flipped two stars to −1: two e anyons, energy +4. Anyons come in pairs.', test: (c) => c.ne >= 2 },
@@ -518,17 +525,20 @@ if (typeof document !== 'undefined') (function () {
       guideText: (k) => (k === 0 ? '<b>X</b> on the highlighted edge moves m₂ one square down.' : '<b>X</b> again: m₂ lands on the m part of ε₃.'),
       lesson: 'Now the e part of ε₃ is left: m × ε = m × m × e = e. That is every fusion rule of the toric code. Each anyon fused with itself gives nothing, and any two of e, m, ε fuse to the third.',
       test: () => progress.mOnEps },
-    { part: 'Statistics', id: 'spin', panel: 'wave', start: '00', text: 'Is ε a boson or a fermion? Turn one once around: walk its m once around its e, then close every string.',
-      hint: 'Press the button below for a ready ε, then click the highlighted edges one by one.',
-      // a ready ε: e at vertex (2, 2), its m on the square to the upper left; then the m walks around the e, and the strings close
-      setup: (M) => [['Z', M.h(2, 2)], ['X', M.h(1, 4)], ['X', M.h(1, 3)]],
-      guide: (M) => [['X', M.h(1, 2)], ['X', M.v(2, 1)], ['X', M.h(2, 2)], ['X', M.v(2, 2)], ['X', M.h(1, 3)], ['X', M.h(1, 4)], ['Z', M.h(2, 2)]],
-      placeLabel: 'Place an ε for me', placed: 'An ε is ready: its e on the vertex, its m on the square to the upper left.',
-      guideText: (k) => k < 4 ? `<b>X</b> on the highlighted edge: the m steps to the next square around the e, and the ε turns a quarter (${k} of 4 done).`
-        : k < 6 ? 'The ε has turned once around. Now close the strings: <b>X</b> on the highlighted edge moves the m back towards its partner.'
-        : 'Last step: <b>Z</b> on the highlighted edge brings the two e’s together.',
-      lesson: '|ψ⟩ = −|00⟩. The dashed square left behind is the path of the m: a closed X loop around the e. It crosses the e’s Z string once, and ZX = −XZ, so a full turn of ε multiplied the state by −1. This is the e–m braiding phase again, now a property of a single particle. A boson turned by 360° gets no sign. For anyons the phase from swapping two identical particles equals the phase from one full turn, so two ε’s that swap places also pick up −1: e and m are bosons, but their bound state ε is a fermion.',
-      test: (c) => progress.hadEps && c.gs && Math.abs(c.ov[0] + 1) < 1e-9 },
+    { part: 'Statistics', id: 'swapE', panel: 'wave', start: '00', text: 'Swap two e’s: does anything change?',
+      hint: 'Press the button below for two e’s with a side track above the middle, then click the highlighted edges.',
+      showStart: true, setup: (M) => ePair(M, 2, 2), labels: (k) => swapLabels(k, 'e'), guide: (M) => swapPath(M, 2, 2, 'Z'),
+      placeLabel: 'Place two e’s for me', placed: 'Two e’s, e₁ and e₂, with a free vertex between them and a side track above it. Note the state |ψ⟩ under the board.',
+      guideText: (k) => `<b>Z</b> on the highlighted edge: ${SWAP_STEPS[k].replace(/P/g, 'e')}`,
+      lesson: 'e₁ and e₂ have swapped places. The board is exactly as it was, and so is |ψ⟩, with no sign: swapping two e’s changes nothing at all. That is a boson. The same holds for two m’s.',
+      test: () => guideDone('swapE') },
+    { id: 'swapEps', panel: 'wave', start: '00', text: 'Now swap two ε’s the same way.',
+      hint: 'Press the button below for two ε’s with the same side track, then click the highlighted edges.',
+      showStart: true, setup: (M) => epsPair(M, 2, 2), labels: (k) => swapLabels(k, 'eps'), guide: (M) => swapPath(M, 2, 2, 'eps'),
+      placeLabel: 'Place two ε’s for me', placed: 'Two ε’s, ε₁ and ε₂, with a free vertex between them and a side track above it. Note the state |ψ⟩ under the board.',
+      guideText: (k) => `<b>Move ε</b> on the highlighted edge: ${SWAP_STEPS[k].replace(/P/g, 'ε')}`,
+      lesson: 'ε₁ and ε₂ have swapped places, and the board is exactly as it was: the same anyons, the same strings. But |ψ⟩ now has a minus sign in front. Swapping two ε’s multiplied the state by −1: ε is a fermion. The sign comes from the e–m braid. Each ε carries an e and an m, and during the swap the e of each ε went half way around the m of the other. Together that is one full e–m braid, and its −1 is the one from the braid mission.',
+      test: () => guideDone('swapEps') },
     { part: 'Computing with anyons', id: 'xgate', panel: 'loops', start: '00', text: 'Flip qubit 1: drag an m around the torus along y.',
       hint: 'X on the horizontal edges of one column, bottom to top. Drag to do it in one stroke.',
       lesson: '|00⟩ → |10⟩. Energy 0, but a different ground state: the Z loop along x now reads −1. That closed X loop is the logical gate <span class="ob">X</span>₁.',
@@ -571,11 +581,9 @@ if (typeof document !== 'undefined') (function () {
     ['<i>e</i> × <i>ε</i> = <i>m</i>', 'eEps', 'a Z end lands on the ε’s vertex: only its square’s −1 is left'],
     ['<i>m</i> × <i>ε</i> = <i>e</i>', 'mEps', 'an X end lands on the ε’s square: only its vertex’s −1 is left'],
   ];
-  const STATISTICS = '<p><b>Boson or fermion</b> on the board: move the anyons around, close every string so that no anyon is left, '
-    + 'and read the sign in front of |00⟩ in the state under the board.</p>'
-    + '<p><b>Boson</b>: turning one once around, or swapping two of them, leaves +|00⟩. e and m are bosons: '
-    + 'a Z loop with no m inside, or an X loop with no e inside, never changes the sign.</p>'
-    + '<p><b>Fermion</b>: one full turn, or a swap of two, leaves −|00⟩.</p>';
+  const STATISTICS = '<p><b>Boson or fermion</b> on the board: swap two identical anyons, so that the board ends exactly as it began, '
+    + 'and compare the state |ψ⟩ under the board with what it was before.</p>'
+    + '<p><b>Boson</b>: |ψ⟩ is unchanged. <b>Fermion</b>: |ψ⟩ has picked up a minus sign.</p>';
   const heat = { running: false, timer: null, t: 0, series: [], ref: null, failedPassive: false, activeSweeps: 0, firstErr: null };
 
   let s, pad, X, Y;
@@ -586,7 +594,7 @@ if (typeof document !== 'undefined') (function () {
   function start(key, size = L) {
     startKey = key; L = size; M = makeModel(L);
     document.getElementById('sizeName').textContent = `${L} × ${L}`; S = M.fresh(); C0 = STARTS[key][1].map((z) => z.slice()); history = []; inspect = null;
-    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.hadEps = false; progress.fourEps = false; lastEps = null; progress.guide = null; progress.eOnEps = false; progress.mOnEps = false;
+    progress.visited = new Set(); progress.hadAnyons = false; progress.fourE = false; progress.fourEps = false; lastEps = null; progress.guide = null; progress.eOnEps = false; progress.mOnEps = false;
     stopHeat(); Object.assign(heat, { t: 0, series: [], ref: null, firstErr: null });
     geometry(); resample(); render();
     log('Click an edge to apply the gate to that qubit; drag to apply it along a path.');
@@ -597,15 +605,20 @@ if (typeof document !== 'undefined') (function () {
     const steps = m.guide(M), states = [M.copy(S)];
     let last = null;
     for (const [G, e] of steps) { const s2 = M.copy(states[states.length - 1]); last = M.act(s2, G, e, last) || last; states.push(s2); }
-    progress.guide = { id: m.id, steps, states }; setFusion(true); setTool(steps[0][0]);
-    log(m.placed);
+    progress.guide = { id: m.id, steps, states, k: 0 }; setFusion(true); setTool(steps[0][0]);
+    progress.guide.start = document.getElementById('dMicro').innerHTML;   // the state as placed, to compare with at the end
+    log(m.placed); render();
   }
   function guideAt() {
     const g = progress.guide, m = missions[cur];
     if (!g || !m || g.id !== m.id) return null;
     const same = (a, b) => a.k === b.k && a.a.every((x, n) => x === b.a[n]) && a.b.every((x, n) => x === b.b[n]);
-    return g.states.findIndex((s2) => same(s2, S));
+    let k = -1;   // the latest matching step no further than one past the last one reached (a swap can end where it began)
+    g.states.forEach((s2, n) => { if (n <= g.k + 1 && same(s2, S)) k = n; });
+    if (k >= 0) g.k = k;
+    return k;
   }
+  const guideDone = (id) => { const g = progress.guide; return !!g && g.id === id && guideAt() === g.steps.length; };
   function stateKey(c) {          // ground state up to a global phase
     const k = c.findIndex((z) => cx.abs2(z) > 1e-9); const ph = cx.scale(cx.conj(c[k]), 1 / Math.sqrt(cx.abs2(c[k])));
     return c.map((z) => cx.mul(z, ph).map((x) => x.toFixed(3)).join(',')).join(';');
@@ -680,8 +693,8 @@ if (typeof document !== 'undefined') (function () {
     const q = s * 0.3;
     for (const [i, j] of shown.m)
       el('rect', { x: X(i + 0.5) - q / 2, y: Y(j + 0.5) - q / 2, width: q, height: q, rx: 3, fill: col('--m-color'), stroke: ring, 'stroke-width': 2 });
-    const guided = guideAt() !== null && missions[cur].labels;
-    if (guided) for (const [kind, i, j, name] of missions[cur].labels) {
+    const gk = guideAt(), labels = gk !== null && missions[cur].labels;
+    if (labels) for (const [kind, i, j, name] of typeof labels === 'function' ? labels(gk) : labels) {
       const here = kind === 'eps' ? c.fz.eps : (fusion ? c.fz : c.an)[kind];   // an e or m inside an ε loses its label
       if (!here.some((q) => q[0] === i && q[1] === j)) continue;
       const [x, y] = kind === 'm' ? [i + 0.5, j + 0.88] : [i - 0.3, j + 0.3];
@@ -830,13 +843,14 @@ if (typeof document !== 'undefined') (function () {
       if (L !== MISSION_L) start(missions[cur].start || '00', MISSION_L); else render();
     }));
     dots.querySelector('.free').addEventListener('click', () => { cur = -1; lessonOf = null; render(); });
-    document.getElementById('lesson').innerHTML = lessonOf ? `<b>✓ ${lessonOf.text}</b><br>${lessonOf.lesson}` : '';
+    const startOf = (mm) => (mm && mm.showStart && progress.guide && progress.guide.id === mm.id ? `<div class="small">At the start: ${progress.guide.start}</div>` : '');
+    document.getElementById('lesson').innerHTML = lessonOf ? `<b>✓ ${lessonOf.text}</b><br>${lessonOf.lesson}${startOf(lessonOf)}` : '';
     const m = missions[cur], free = cur < 0, done = missions.filter((x) => progress[x.id]).length;
     document.getElementById('mPart').textContent = free ? (done === missions.length ? `All ${missions.length} missions done` : 'Free play')
       : `${cur + 1} of ${missions.length} · ${partOf(cur)}`;
     document.getElementById('mTask').innerHTML = free ? 'Free play' : m.text;
     document.getElementById('mHint').innerHTML = free ? 'Pick a start state, a size and a view. Every tool still works.'
-      : !progress[m.id] && m.guide && guideAt() !== null ? (guideAt() >= 0 ? m.guideText(guideAt(), m.guide(M)[guideAt()] || [])
+      : !progress[m.id] && m.guide && guideAt() !== null ? (guideAt() >= 0 ? m.guideText(guideAt(), m.guide(M)[guideAt()] || []) + startOf(m)
         : 'That was not the highlighted edge. Undo to go back to the guide, or carry on your own way.')
       : !progress[m.id] ? m.hint + (m.id === 'basis' ? ` (${progress.visited.size} of 4 so far)` : '')
       : done === missions.length ? 'All missions done. Free play keeps every tool, or <button class="over">Start over</button>'
@@ -881,7 +895,6 @@ if (typeof document !== 'undefined') (function () {
   }
   function update(c) {
     if (!c.gs) progress.hadAnyons = true;
-    if (c.fz.eps.length) progress.hadEps = true;
     if (missions[cur] && missions[cur].id === 'fuseE' && c.ne >= 4) progress.fourE = true;
     if (missions[cur] && missions[cur].id === 'epsEps' && c.fz.eps.length >= 4) progress.fourEps = true;
     if (c.gs && startKey === '00') progress.visited.add(stateKey(c.now));
