@@ -1,6 +1,6 @@
 # toric-code-playground
 
-[![The toric code playground with the heat bath on: thermal anyons and their strings on a 6 x 6 torus, the decoder reporting a logical error, and the energy over time](app/screenshot.png)](https://liukelyu.github.io/toric-code-playground/)
+[![The toric code playground in the fusion mission: two labelled pairs of epsilon anyons (an e next to an m) on a 6 x 6 torus, the next edge to move highlighted, and the fusion rules e x e = 1, m x m = 1, e x m = epsilon, epsilon x epsilon = 1](app/screenshot.png)](https://liukelyu.github.io/toric-code-playground/)
 
 *Why I built this.* Topological order, anyons, braiding: I have learned these words many times, but they never truely clicked, I did not have enough intuition for them. I built this mini project to get that intuition myself, by applying gates by hand and watching what they do to the state.
 
